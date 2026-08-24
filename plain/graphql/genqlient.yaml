@@ -1,0 +1,13 @@
+schema: schema.graphql
+operations:
+  - operations/*.graphql
+generated: ../generated.go
+package: plain
+
+# Inputs and nested response objects become pointers, so optional inputs can be
+# omitted and nullable response objects (workflow, error) are distinguishable.
+use_struct_references: true
+
+# Nullable fields become pointers: transitions carry meaningful nulls (terminal
+# branches) and optional inputs must be omitted, not sent as zero values.
+optional: pointer

@@ -1,0 +1,85 @@
+fragment WorkflowStepFields on WorkflowStep {
+  id
+  workflowId
+  type
+  name
+  payload
+  transitions
+  positionX
+  positionY
+}
+
+fragment WorkflowFields on Workflow {
+  id
+  name
+  trigger
+  startStepId
+  publishedAt {
+    iso8601
+  }
+  order
+  steps {
+    ...WorkflowStepFields
+  }
+}
+
+fragment MutationErrorFields on MutationError {
+  message
+  type
+  code
+  fields {
+    field
+    message
+    type
+  }
+}
+
+query GetWorkflow($workflowId: ID!) {
+  workflow(workflowId: $workflowId) {
+    ...WorkflowFields
+  }
+}
+
+mutation CreateWorkflow($input: CreateWorkflowInput!) {
+  createWorkflow(input: $input) {
+    workflow {
+      ...WorkflowFields
+    }
+    error {
+      ...MutationErrorFields
+    }
+  }
+}
+
+mutation UpdateWorkflow($input: UpdateWorkflowInput!) {
+  updateWorkflow(input: $input) {
+    workflow {
+      ...WorkflowFields
+    }
+    error {
+      ...MutationErrorFields
+    }
+  }
+}
+
+mutation DeleteWorkflow($input: DeleteWorkflowInput!) {
+  deleteWorkflow(input: $input) {
+    error {
+      ...MutationErrorFields
+    }
+  }
+}
+
+mutation BulkUpsertWorkflowSteps($input: BulkUpsertWorkflowStepsInput!) {
+  bulkUpsertWorkflowSteps(input: $input) {
+    results {
+      result
+      workflowStep {
+        ...WorkflowStepFields
+      }
+    }
+    error {
+      ...MutationErrorFields
+    }
+  }
+}

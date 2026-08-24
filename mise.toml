@@ -1,0 +1,57 @@
+[tools]
+go = "1.26"
+golangci-lint = "latest"
+goreleaser = "latest"
+terraform = "latest"
+
+[tasks.dev-override]
+description = "Write .terraformrc-dev so Terraform uses the locally installed provider"
+run = '''
+cat > "$MISE_PROJECT_ROOT/.terraformrc-dev" <<EOF
+provider_installation {
+  dev_overrides {
+    "jeremybumsted/plain" = "$(go env GOBIN || echo "$(go env GOPATH)/bin")"
+  }
+  direct {}
+}
+EOF
+echo "Wrote .terraformrc-dev — use it with:"
+echo "  export TF_CLI_CONFIG_FILE=$MISE_PROJECT_ROOT/.terraformrc-dev"
+'''
+
+[tasks.build]
+description = "Build the provider binary"
+run = "go build -o bin/terraform-provider-plain ."
+
+[tasks.install]
+description = "Install the provider into GOBIN for local Terraform use"
+run = "go install ."
+
+[tasks.test]
+description = "Run unit tests"
+run = "go test ./... -race -count=1"
+
+[tasks.testacc]
+description = "Run acceptance tests (hits the real Plain API — needs PLAIN_API_KEY)"
+env = { TF_ACC = "1" }
+run = "go test ./plain/... -v -count=1 -timeout 30m"
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "golangci-lint run ./..."
+
+[tasks.fmt]
+description = "Format Go and Terraform files"
+run = ["go fmt ./...", "terraform fmt -recursive ./examples"]
+
+[tasks.schema]
+description = "Re-download the Plain GraphQL schema"
+run = "curl -sfL -o plain/graphql/schema.graphql https://core-api.uk.plain.com/graphql/v1/schema.graphql"
+
+[tasks.generate]
+description = "Generate the typed GraphQL client from .graphql operations"
+run = "go tool genqlient plain/graphql/genqlient.yaml"
+
+[tasks.docs]
+description = "Generate registry docs from schema + examples"
+run = "go tool tfplugindocs generate --provider-name plain"

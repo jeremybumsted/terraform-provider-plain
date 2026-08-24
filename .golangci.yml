@@ -1,0 +1,14 @@
+version: "2"
+linters:
+  enable:
+    - bodyclose
+    - errcheck
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+    - unconvert
+    - unused
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -1,0 +1,18 @@
+bin/
+dist/
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+.terraformrc-dev
+terraform-provider-plain
+.env
+
+# Local reference notes, not published
+.docs/
+
+# Local smoke-test configs, not published
+scratch/
+
+# stage debug logs
+scratch/*.log

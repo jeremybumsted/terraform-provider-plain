@@ -33,7 +33,7 @@ func (r *workflowResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 	if created.CreateWorkflow.Error != nil {
-		resp.Diagnostics.Append(mutationDiags("Unable to create workflow", created.CreateWorkflow.Error)...)
+		resp.Diagnostics.Append(mutationDiags("Unable to create workflow", created.CreateWorkflow.Error, workflowAttributes)...)
 		return
 	}
 
@@ -210,7 +210,7 @@ func (r *workflowResource) Update(ctx context.Context, req resource.UpdateReques
 			return
 		}
 		if updated.UpdateWorkflow.Error != nil {
-			resp.Diagnostics.Append(mutationDiags("Unable to update workflow", updated.UpdateWorkflow.Error)...)
+			resp.Diagnostics.Append(mutationDiags("Unable to update workflow", updated.UpdateWorkflow.Error, workflowAttributes)...)
 			return
 		}
 	}
@@ -246,7 +246,7 @@ func (r *workflowResource) Delete(ctx context.Context, req resource.DeleteReques
 		return
 	}
 	if deleted.DeleteWorkflow.Error != nil {
-		resp.Diagnostics.Append(mutationDiags("Unable to delete workflow", deleted.DeleteWorkflow.Error)...)
+		resp.Diagnostics.Append(mutationDiags("Unable to delete workflow", deleted.DeleteWorkflow.Error, workflowAttributes)...)
 	}
 }
 

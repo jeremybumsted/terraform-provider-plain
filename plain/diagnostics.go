@@ -14,16 +14,27 @@ type mutationError interface {
 	FieldErrors() map[string]string
 }
 
-// topLevelAttributes are the resource attributes that share a name with a Plain
-// input field, so a field error can be attached to the attribute at fault.
-var topLevelAttributes = map[string]string{
-	"name":        "name",
-	"trigger":     "trigger",
-	"order":       "order",
-	"isPublished": "published",
-	"startStepId": "start_step",
-	"steps":       "steps",
-}
+// Each resource maps the Plain input fields it actually sends onto its own
+// attribute names, so a field error lands on the attribute at fault. The maps
+// are per-resource on purpose: "payload" means a step payload to a workflow and
+// the whole rule definition to a rule, and a shared map would attach a
+// bulkUpsertWorkflowSteps error to a root attribute that does not exist.
+var (
+	workflowAttributes = map[string]string{
+		"name":        "name",
+		"trigger":     "trigger",
+		"order":       "order",
+		"isPublished": "published",
+		"startStepId": "start_step",
+		"steps":       "steps",
+	}
+
+	workflowRuleAttributes = map[string]string{
+		"name":    "name",
+		"payload": "payload",
+		"order":   "order",
+	}
+)
 
 // mutationDiags converts a Plain MutationError into diagnostics.
 //
@@ -31,7 +42,7 @@ var topLevelAttributes = map[string]string{
 // GraphQL errors array, and includes a stable code plus per-field detail. Both
 // are worth surfacing: the code is what practitioners match on, and the fields
 // point at the attribute that actually needs fixing.
-func mutationDiags(summary string, e mutationError) diag.Diagnostics {
+func mutationDiags(summary string, e mutationError, attributes map[string]string) diag.Diagnostics {
 	var diags diag.Diagnostics
 	if e == nil {
 		return diags
@@ -41,7 +52,7 @@ func mutationDiags(summary string, e mutationError) diag.Diagnostics {
 	attached := 0
 
 	for field, message := range fieldErrors {
-		attr, ok := topLevelAttributes[field]
+		attr, ok := attributes[field]
 		if !ok {
 			continue
 		}

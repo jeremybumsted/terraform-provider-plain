@@ -1,0 +1,454 @@
+package plain
+
+import (
+	"encoding/json"
+	"fmt"
+	"reflect"
+	"regexp"
+	"strings"
+	"testing"
+
+	"github.com/hashicorp/terraform-plugin-testing/helper/acctest"
+	"github.com/hashicorp/terraform-plugin-testing/helper/resource"
+	"github.com/hashicorp/terraform-plugin-testing/terraform"
+)
+
+// workflowConfig renders a two-step workflow: a priority check that raises
+// urgent threads and lets everything else fall through.
+//
+// The payloads here are the shapes verified against the live API — note that
+// priority_equals takes an array and set_priority takes a scalar.
+func workflowConfig(name string, published bool, priority int, onTrue, onFalse string) string {
+	branch := func(attr, target string) string {
+		if target == "" {
+			return ""
+		}
+		return fmt.Sprintf("      %s = %q\n", attr, target)
+	}
+
+	return providerConfig + fmt.Sprintf(`
+resource "plain_workflow" "test" {
+  name      = %q
+  published = %t
+
+  trigger = jsonencode({
+    type   = "events"
+    events = ["thread.thread_created"]
+  })
+
+  start_step = "is_urgent"
+
+  steps = {
+    is_urgent = {
+      type = "CONDITION"
+      name = "Is the thread urgent?"
+
+      payload = jsonencode({
+        version    = 1
+        type       = "priority_equals"
+        priorities = [%d]
+      })
+
+%[4]s%[5]s    }
+
+    raise = {
+      type = "ACTION"
+      name = "Raise priority"
+
+      payload = jsonencode({
+        version  = 1
+        type     = "set_priority"
+        priority = 0
+      })
+    }
+  }
+}
+`, name, published, priority, branch("on_true", onTrue), branch("on_false", onFalse))
+}
+
+// workflowThreeStepConfig adds a WAIT step, which is how the tests exercise
+// adding and removing steps from an existing graph.
+func workflowThreeStepConfig(name string, published bool) string {
+	return providerConfig + fmt.Sprintf(`
+resource "plain_workflow" "test" {
+  name      = %q
+  published = %t
+
+  trigger = jsonencode({
+    type   = "events"
+    events = ["thread.thread_created"]
+  })
+
+  start_step = "is_urgent"
+
+  steps = {
+    is_urgent = {
+      type = "CONDITION"
+      name = "Is the thread urgent?"
+
+      payload = jsonencode({
+        version    = 1
+        type       = "priority_equals"
+        priorities = [0]
+      })
+
+      on_true  = "raise"
+      on_false = "hold"
+    }
+
+    raise = {
+      type = "ACTION"
+      name = "Raise priority"
+
+      payload = jsonencode({
+        version  = 1
+        type     = "set_priority"
+        priority = 0
+      })
+    }
+
+    hold = {
+      type = "WAIT"
+      name = "Hold briefly"
+
+      payload = jsonencode({
+        duration = 60
+      })
+    }
+  }
+}
+`, name, published)
+}
+
+// TestAccWorkflow_basic covers the whole ordinary lifecycle: create a draft,
+// read it back cleanly, rename it, and destroy it.
+func TestAccWorkflow_basic(t *testing.T) {
+	name := acctest.RandomWithPrefix("tf-acc-workflow")
+	renamed := name + "-renamed"
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckWorkflowDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: workflowConfig(name, false, 0, "raise", ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "name", name),
+					resource.TestCheckResourceAttr("plain_workflow.test", "published", "false"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "start_step", "is_urgent"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.%", "2"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.type", "CONDITION"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.on_true", "raise"),
+					// An omitted branch is terminal and must stay null rather than
+					// becoming an empty string.
+					resource.TestCheckNoResourceAttr("plain_workflow.test", "steps.is_urgent.on_false"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.raise.type", "ACTION"),
+					resource.TestCheckResourceAttrSet("plain_workflow.test", "id"),
+					// Steps carry Plain's assigned IDs even though they are keyed locally.
+					resource.TestCheckResourceAttrWith("plain_workflow.test", "steps.raise.id", func(v string) error {
+						if !strings.HasPrefix(v, stepIDPrefix) {
+							return fmt.Errorf("step id %q does not start with %q", v, stepIDPrefix)
+						}
+						return nil
+					}),
+				),
+			},
+			{
+				// A second plan against the same config must be empty. This is what
+				// catches JSON normalization drift in trigger and payload.
+				Config:   workflowConfig(name, false, 0, "raise", ""),
+				PlanOnly: true,
+			},
+			{
+				Config: workflowConfig(renamed, false, 0, "raise", ""),
+				Check:  resource.TestCheckResourceAttr("plain_workflow.test", "name", renamed),
+			},
+		},
+	})
+}
+
+// TestAccWorkflow_import proves the documented import behaviour rather than
+// working around it: Plain does not store the local step keys, so an imported
+// workflow comes back keyed by Plain's step IDs.
+func TestAccWorkflow_import(t *testing.T) {
+	name := acctest.RandomWithPrefix("tf-acc-workflow-import")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckWorkflowDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: workflowConfig(name, false, 0, "raise", ""),
+			},
+			{
+				ResourceName:      "plain_workflow.test",
+				ImportState:       true,
+				ImportStateVerify: true,
+				// steps and start_step are rekeyed on import, and trigger cannot be
+				// compared literally at all — see checkImportedTriggerIs. Everything
+				// ignored here is asserted by the checks below instead.
+				ImportStateVerifyIgnore: []string{"steps", "start_step", "trigger"},
+				ImportStateCheck: composeImportStateChecks(
+					checkImportedStepsKeyedByID,
+					checkImportedTriggerIs(`{"type":"events","events":["thread.thread_created"]}`),
+					checkImportedPayloads(
+						`{"version":1,"type":"priority_equals","priorities":[0]}`,
+						`{"version":1,"type":"set_priority","priority":0}`,
+					),
+				),
+			},
+		},
+	})
+}
+
+func composeImportStateChecks(checks ...resource.ImportStateCheckFunc) resource.ImportStateCheckFunc {
+	return func(states []*terraform.InstanceState) error {
+		for _, check := range checks {
+			if err := check(states); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+}
+
+// checkImportedTriggerIs asserts the imported trigger is semantically the
+// expected JSON.
+//
+// ImportStateVerify cannot do this itself: it compares state attributes as raw
+// strings. jsonencode() sorts object keys, so config produces one byte sequence
+// and Plain returns another, and after an apply the framework's semantic
+// equality keeps the config-shaped string in state precisely so the difference
+// never surfaces as drift. An import has no prior value to keep, so Plain's
+// shape lands instead and a literal comparison fails on two equivalent values.
+//
+// The attribute is therefore excluded from ImportStateVerify and checked here
+// on the JSON rather than on the bytes. Any new jsontypes.Normalized attribute
+// needs the same treatment.
+func checkImportedTriggerIs(want string) resource.ImportStateCheckFunc {
+	return func(states []*terraform.InstanceState) error {
+		if len(states) != 1 {
+			return fmt.Errorf("expected one imported instance, got %d", len(states))
+		}
+
+		got := states[0].Attributes["trigger"]
+		equal, err := jsonEquivalent(got, want)
+		if err != nil {
+			return fmt.Errorf("imported trigger: %w", err)
+		}
+		if !equal {
+			return fmt.Errorf("imported trigger is %s, want something equivalent to %s", got, want)
+		}
+
+		return nil
+	}
+}
+
+// checkImportedPayloads asserts the imported steps carry the expected payloads.
+//
+// steps is excluded from ImportStateVerify wholesale because the keys change, so
+// without this the payloads would not be verified at all. Order is not
+// meaningful — the steps come back under Plain's IDs — so this matches on the
+// set.
+func checkImportedPayloads(want ...string) resource.ImportStateCheckFunc {
+	return func(states []*terraform.InstanceState) error {
+		if len(states) != 1 {
+			return fmt.Errorf("expected one imported instance, got %d", len(states))
+		}
+
+		var got []string
+		for key, value := range states[0].Attributes {
+			if strings.HasPrefix(key, "steps.") && strings.HasSuffix(key, ".payload") {
+				got = append(got, value)
+			}
+		}
+
+		if len(got) != len(want) {
+			return fmt.Errorf("found %d imported step payloads, want %d", len(got), len(want))
+		}
+
+		for _, wanted := range want {
+			found := false
+			for _, candidate := range got {
+				equal, err := jsonEquivalent(candidate, wanted)
+				if err != nil {
+					return fmt.Errorf("imported step payload: %w", err)
+				}
+				if equal {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("no imported step has a payload equivalent to %s; got %v", wanted, got)
+			}
+		}
+
+		return nil
+	}
+}
+
+func jsonEquivalent(a, b string) (bool, error) {
+	var parsedA, parsedB any
+	if err := json.Unmarshal([]byte(a), &parsedA); err != nil {
+		return false, fmt.Errorf("%q is not valid JSON: %w", a, err)
+	}
+	if err := json.Unmarshal([]byte(b), &parsedB); err != nil {
+		return false, fmt.Errorf("%q is not valid JSON: %w", b, err)
+	}
+
+	return reflect.DeepEqual(parsedA, parsedB), nil
+}
+
+// checkImportedStepsKeyedByID asserts every imported step key is the step's own
+// Plain ID, and that start_step was rewritten to match.
+func checkImportedStepsKeyedByID(states []*terraform.InstanceState) error {
+	if len(states) != 1 {
+		return fmt.Errorf("expected one imported instance, got %d", len(states))
+	}
+	attrs := states[0].Attributes
+
+	if got := attrs["steps.%"]; got != "2" {
+		return fmt.Errorf("imported steps.%% = %q, want 2", got)
+	}
+
+	seen := 0
+	for key, value := range attrs {
+		// steps.<key>.id — the key segment is what we are checking.
+		if !strings.HasPrefix(key, "steps.") || !strings.HasSuffix(key, ".id") {
+			continue
+		}
+		stepKey := strings.TrimSuffix(strings.TrimPrefix(key, "steps."), ".id")
+		if stepKey != value {
+			return fmt.Errorf("imported step is keyed %q but its id is %q; "+
+				"imported steps are expected to be keyed by Plain's step ID", stepKey, value)
+		}
+		seen++
+	}
+	if seen != 2 {
+		return fmt.Errorf("found %d imported step ids, want 2", seen)
+	}
+
+	start := attrs["start_step"]
+	if !strings.HasPrefix(start, stepIDPrefix) {
+		return fmt.Errorf("imported start_step = %q, want a %s step ID", start, stepIDPrefix)
+	}
+	if _, ok := attrs["steps."+start+".id"]; !ok {
+		return fmt.Errorf("imported start_step %q does not name one of the imported steps", start)
+	}
+
+	return nil
+}
+
+// TestAccWorkflow_publishLifecycle is the test the provider most needs.
+//
+// Plain refuses to restructure a published workflow, so the provider unpublishes
+// and republishes around structural changes — but doing that for every edit
+// would take live support automation offline on a routine payload tweak. This
+// asserts the line graphChanged draws, in both directions, against the real API.
+func TestAccWorkflow_publishLifecycle(t *testing.T) {
+	name := acctest.RandomWithPrefix("tf-acc-workflow-publish")
+	var publishedAt, afterPayloadEdit string
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckWorkflowDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: workflowConfig(name, true, 0, "raise", ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "published", "true"),
+					testAccCaptureWorkflowPublishedAt("plain_workflow.test", &publishedAt),
+				),
+			},
+			{
+				// Payload-only edit: the graph is untouched, so the workflow must
+				// stay live for the whole apply.
+				Config: workflowConfig(name, true, 1, "raise", ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "published", "true"),
+					testAccCheckWorkflowPublishedAtUnchanged("plain_workflow.test", &publishedAt),
+					testAccCaptureWorkflowPublishedAt("plain_workflow.test", &afterPayloadEdit),
+				),
+			},
+			{
+				// Structural edit: the branch moves from on_true to on_false. This
+				// would fail outright without the unpublish/republish sequencing,
+				// so the step passing at all is half the assertion.
+				Config: workflowConfig(name, true, 1, "", "raise"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "published", "true"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.on_false", "raise"),
+					resource.TestCheckNoResourceAttr("plain_workflow.test", "steps.is_urgent.on_true"),
+					testAccCheckWorkflowPublishedAtMoved("plain_workflow.test", &afterPayloadEdit),
+				),
+			},
+			{
+				// And back to a draft.
+				Config: workflowConfig(name, false, 1, "", "raise"),
+				Check:  resource.TestCheckResourceAttr("plain_workflow.test", "published", "false"),
+			},
+		},
+	})
+}
+
+// TestAccWorkflow_stepsAddedAndRemoved covers reconciliation in both
+// directions. bulkUpsertWorkflowSteps deletes anything absent from the list, so
+// dropping a step from config has to actually remove it from Plain.
+func TestAccWorkflow_stepsAddedAndRemoved(t *testing.T) {
+	name := acctest.RandomWithPrefix("tf-acc-workflow-steps")
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		CheckDestroy:             testAccCheckWorkflowDestroyed,
+		Steps: []resource.TestStep{
+			{
+				Config: workflowConfig(name, false, 0, "raise", ""),
+				Check:  resource.TestCheckResourceAttr("plain_workflow.test", "steps.%", "2"),
+			},
+			{
+				// Add a WAIT step on the false branch.
+				Config: workflowThreeStepConfig(name, false),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.%", "3"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.hold.type", "WAIT"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.on_false", "hold"),
+				),
+			},
+			{
+				// Remove it again. The step must be gone from Plain, not orphaned.
+				Config: workflowConfig(name, false, 0, "raise", ""),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.%", "2"),
+					resource.TestCheckNoResourceAttr("plain_workflow.test", "steps.hold.type"),
+				),
+			},
+			{
+				Config:   workflowConfig(name, false, 0, "raise", ""),
+				PlanOnly: true,
+			},
+		},
+	})
+}
+
+// TestAccWorkflow_invalidGraph checks the config-time validation fires before
+// anything is sent to Plain — the failure a practitioner should see is a
+// diagnostic naming the attribute, not a half-created workflow.
+func TestAccWorkflow_invalidGraph(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		PreCheck:                 func() { testAccPreCheck(t) },
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		Steps: []resource.TestStep{
+			{
+				Config:      workflowConfig(acctest.RandomWithPrefix("tf-acc-workflow-bad"), false, 0, "nonexistent", ""),
+				ExpectError: regexp.MustCompile(`Transition target does not match any step`),
+				PlanOnly:    true,
+			},
+		},
+	})
+}

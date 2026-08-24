@@ -555,6 +555,213 @@ func (v *CreateWorkflowResponse) GetCreateWorkflow() *CreateWorkflowCreateWorkfl
 	return v.CreateWorkflow
 }
 
+// CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutput includes the requested fields of the GraphQL type CreateWorkflowRuleOutput.
+type CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutput struct {
+	WorkflowRule *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule       `json:"workflowRule"`
+	Error        *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError `json:"error"`
+}
+
+// GetWorkflowRule returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutput.WorkflowRule, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutput) GetWorkflowRule() *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule {
+	return v.WorkflowRule
+}
+
+// GetError returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutput.Error, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutput) GetError() *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError {
+	return v.Error
+}
+
+// CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError includes the requested fields of the GraphQL type MutationError.
+// The GraphQL type's documentation follows.
+//
+// A type indicating an error has occurred while making a mutation.
+type CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError struct {
+	MutationErrorFields `json:"-"`
+}
+
+// GetMessage returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError) GetMessage() string {
+	return v.MutationErrorFields.Message
+}
+
+// GetType returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError.Type, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError) GetType() MutationErrorType {
+	return v.MutationErrorFields.Type
+}
+
+// GetCode returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError) GetCode() string {
+	return v.MutationErrorFields.Code
+}
+
+// GetFields returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError.Fields, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError) GetFields() []*MutationErrorFieldsFieldsMutationFieldError {
+	return v.MutationErrorFields.Fields
+}
+
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.MutationErrorFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError struct {
+	Message string `json:"message"`
+
+	Type MutationErrorType `json:"type"`
+
+	Code string `json:"code"`
+
+	Fields []*MutationErrorFieldsFieldsMutationFieldError `json:"fields"`
+}
+
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError) __premarshalJSON() (*__premarshalCreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError, error) {
+	var retval __premarshalCreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputErrorMutationError
+
+	retval.Message = v.MutationErrorFields.Message
+	retval.Type = v.MutationErrorFields.Type
+	retval.Code = v.MutationErrorFields.Code
+	retval.Fields = v.MutationErrorFields.Fields
+	return &retval, nil
+}
+
+// CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule includes the requested fields of the GraphQL type WorkflowRule.
+type CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule struct {
+	WorkflowRuleFields `json:"-"`
+}
+
+// GetId returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule.Id, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule) GetId() string {
+	return v.WorkflowRuleFields.Id
+}
+
+// GetName returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule.Name, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule) GetName() string {
+	return v.WorkflowRuleFields.Name
+}
+
+// GetPayload returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule.Payload, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule) GetPayload() string {
+	return v.WorkflowRuleFields.Payload
+}
+
+// GetPublishedAt returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule.PublishedAt, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule) GetPublishedAt() *WorkflowRuleFieldsPublishedAtDateTime {
+	return v.WorkflowRuleFields.PublishedAt
+}
+
+// GetOrder returns CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule.Order, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule) GetOrder() int {
+	return v.WorkflowRuleFields.Order
+}
+
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.WorkflowRuleFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalCreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Payload string `json:"payload"`
+
+	PublishedAt *WorkflowRuleFieldsPublishedAtDateTime `json:"publishedAt"`
+
+	Order int `json:"order"`
+}
+
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule) __premarshalJSON() (*__premarshalCreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule, error) {
+	var retval __premarshalCreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutputWorkflowRule
+
+	retval.Id = v.WorkflowRuleFields.Id
+	retval.Name = v.WorkflowRuleFields.Name
+	retval.Payload = v.WorkflowRuleFields.Payload
+	retval.PublishedAt = v.WorkflowRuleFields.PublishedAt
+	retval.Order = v.WorkflowRuleFields.Order
+	return &retval, nil
+}
+
+type CreateWorkflowRuleInput struct {
+	Name string `json:"name"`
+	// JSON-encoded payload of the rule definition.
+	Payload string `json:"payload"`
+}
+
+// GetName returns CreateWorkflowRuleInput.Name, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleInput) GetName() string { return v.Name }
+
+// GetPayload returns CreateWorkflowRuleInput.Payload, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleInput) GetPayload() string { return v.Payload }
+
+// CreateWorkflowRuleResponse is returned by CreateWorkflowRule on success.
+type CreateWorkflowRuleResponse struct {
+	// Create a new workflow rule. The rule starts unpublished; use `toggleWorkflowRulePublished` to activate it.
+	// The `payload` field must be a valid JSON-encoded rule definition.
+	CreateWorkflowRule *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutput `json:"createWorkflowRule"`
+}
+
+// GetCreateWorkflowRule returns CreateWorkflowRuleResponse.CreateWorkflowRule, and is useful for accessing the field via an interface.
+func (v *CreateWorkflowRuleResponse) GetCreateWorkflowRule() *CreateWorkflowRuleCreateWorkflowRuleCreateWorkflowRuleOutput {
+	return v.CreateWorkflowRule
+}
+
 // DeleteWorkflowDeleteWorkflowDeleteWorkflowOutput includes the requested fields of the GraphQL type DeleteWorkflowOutput.
 type DeleteWorkflowDeleteWorkflowDeleteWorkflowOutput struct {
 	Error *DeleteWorkflowDeleteWorkflowDeleteWorkflowOutputErrorMutationError `json:"error"`
@@ -664,6 +871,115 @@ func (v *DeleteWorkflowResponse) GetDeleteWorkflow() *DeleteWorkflowDeleteWorkfl
 	return v.DeleteWorkflow
 }
 
+// DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutput includes the requested fields of the GraphQL type DeleteWorkflowRuleOutput.
+type DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutput struct {
+	Error *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError `json:"error"`
+}
+
+// GetError returns DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutput.Error, and is useful for accessing the field via an interface.
+func (v *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutput) GetError() *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError {
+	return v.Error
+}
+
+// DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError includes the requested fields of the GraphQL type MutationError.
+// The GraphQL type's documentation follows.
+//
+// A type indicating an error has occurred while making a mutation.
+type DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError struct {
+	MutationErrorFields `json:"-"`
+}
+
+// GetMessage returns DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError) GetMessage() string {
+	return v.MutationErrorFields.Message
+}
+
+// GetType returns DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError.Type, and is useful for accessing the field via an interface.
+func (v *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError) GetType() MutationErrorType {
+	return v.MutationErrorFields.Type
+}
+
+// GetCode returns DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError) GetCode() string {
+	return v.MutationErrorFields.Code
+}
+
+// GetFields returns DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError.Fields, and is useful for accessing the field via an interface.
+func (v *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError) GetFields() []*MutationErrorFieldsFieldsMutationFieldError {
+	return v.MutationErrorFields.Fields
+}
+
+func (v *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.MutationErrorFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalDeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError struct {
+	Message string `json:"message"`
+
+	Type MutationErrorType `json:"type"`
+
+	Code string `json:"code"`
+
+	Fields []*MutationErrorFieldsFieldsMutationFieldError `json:"fields"`
+}
+
+func (v *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError) __premarshalJSON() (*__premarshalDeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError, error) {
+	var retval __premarshalDeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutputErrorMutationError
+
+	retval.Message = v.MutationErrorFields.Message
+	retval.Type = v.MutationErrorFields.Type
+	retval.Code = v.MutationErrorFields.Code
+	retval.Fields = v.MutationErrorFields.Fields
+	return &retval, nil
+}
+
+type DeleteWorkflowRuleInput struct {
+	WorkflowRuleId string `json:"workflowRuleId"`
+}
+
+// GetWorkflowRuleId returns DeleteWorkflowRuleInput.WorkflowRuleId, and is useful for accessing the field via an interface.
+func (v *DeleteWorkflowRuleInput) GetWorkflowRuleId() string { return v.WorkflowRuleId }
+
+// DeleteWorkflowRuleResponse is returned by DeleteWorkflowRule on success.
+type DeleteWorkflowRuleResponse struct {
+	// Permanently delete a workflow rule. This action cannot be undone.
+	DeleteWorkflowRule *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutput `json:"deleteWorkflowRule"`
+}
+
+// GetDeleteWorkflowRule returns DeleteWorkflowRuleResponse.DeleteWorkflowRule, and is useful for accessing the field via an interface.
+func (v *DeleteWorkflowRuleResponse) GetDeleteWorkflowRule() *DeleteWorkflowRuleDeleteWorkflowRuleDeleteWorkflowRuleOutput {
+	return v.DeleteWorkflowRule
+}
+
 // GetWorkflowResponse is returned by GetWorkflow on success.
 type GetWorkflowResponse struct {
 	// Get a workflow by id. Returns null if no workflow with the given ID exists.
@@ -673,6 +989,96 @@ type GetWorkflowResponse struct {
 
 // GetWorkflow returns GetWorkflowResponse.Workflow, and is useful for accessing the field via an interface.
 func (v *GetWorkflowResponse) GetWorkflow() *GetWorkflowWorkflow { return v.Workflow }
+
+// GetWorkflowRuleResponse is returned by GetWorkflowRule on success.
+type GetWorkflowRuleResponse struct {
+	// Get a workflow rule by id. Returns null if no rule with the given ID exists.
+	// Workflow rules are the older, condition-plus-action configuration model; see `workflow` for the newer step-based model.
+	WorkflowRule *GetWorkflowRuleWorkflowRule `json:"workflowRule"`
+}
+
+// GetWorkflowRule returns GetWorkflowRuleResponse.WorkflowRule, and is useful for accessing the field via an interface.
+func (v *GetWorkflowRuleResponse) GetWorkflowRule() *GetWorkflowRuleWorkflowRule {
+	return v.WorkflowRule
+}
+
+// GetWorkflowRuleWorkflowRule includes the requested fields of the GraphQL type WorkflowRule.
+type GetWorkflowRuleWorkflowRule struct {
+	WorkflowRuleFields `json:"-"`
+}
+
+// GetId returns GetWorkflowRuleWorkflowRule.Id, and is useful for accessing the field via an interface.
+func (v *GetWorkflowRuleWorkflowRule) GetId() string { return v.WorkflowRuleFields.Id }
+
+// GetName returns GetWorkflowRuleWorkflowRule.Name, and is useful for accessing the field via an interface.
+func (v *GetWorkflowRuleWorkflowRule) GetName() string { return v.WorkflowRuleFields.Name }
+
+// GetPayload returns GetWorkflowRuleWorkflowRule.Payload, and is useful for accessing the field via an interface.
+func (v *GetWorkflowRuleWorkflowRule) GetPayload() string { return v.WorkflowRuleFields.Payload }
+
+// GetPublishedAt returns GetWorkflowRuleWorkflowRule.PublishedAt, and is useful for accessing the field via an interface.
+func (v *GetWorkflowRuleWorkflowRule) GetPublishedAt() *WorkflowRuleFieldsPublishedAtDateTime {
+	return v.WorkflowRuleFields.PublishedAt
+}
+
+// GetOrder returns GetWorkflowRuleWorkflowRule.Order, and is useful for accessing the field via an interface.
+func (v *GetWorkflowRuleWorkflowRule) GetOrder() int { return v.WorkflowRuleFields.Order }
+
+func (v *GetWorkflowRuleWorkflowRule) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*GetWorkflowRuleWorkflowRule
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.GetWorkflowRuleWorkflowRule = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.WorkflowRuleFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalGetWorkflowRuleWorkflowRule struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Payload string `json:"payload"`
+
+	PublishedAt *WorkflowRuleFieldsPublishedAtDateTime `json:"publishedAt"`
+
+	Order int `json:"order"`
+}
+
+func (v *GetWorkflowRuleWorkflowRule) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *GetWorkflowRuleWorkflowRule) __premarshalJSON() (*__premarshalGetWorkflowRuleWorkflowRule, error) {
+	var retval __premarshalGetWorkflowRuleWorkflowRule
+
+	retval.Id = v.WorkflowRuleFields.Id
+	retval.Name = v.WorkflowRuleFields.Name
+	retval.Payload = v.WorkflowRuleFields.Payload
+	retval.PublishedAt = v.WorkflowRuleFields.PublishedAt
+	retval.Order = v.WorkflowRuleFields.Order
+	return &retval, nil
+}
 
 // GetWorkflowWorkflow includes the requested fields of the GraphQL type Workflow.
 type GetWorkflowWorkflow struct {
@@ -773,6 +1179,124 @@ type IntInput struct {
 // GetValue returns IntInput.Value, and is useful for accessing the field via an interface.
 func (v *IntInput) GetValue() int { return v.Value }
 
+// ListWorkflowRulesResponse is returned by ListWorkflowRules on success.
+type ListWorkflowRulesResponse struct {
+	// List all workflow rules in the workspace, paginated. Rules are returned in their configured display order.
+	// Use `workflowRule` to fetch a single rule by ID.
+	WorkflowRules *ListWorkflowRulesWorkflowRulesWorkflowRuleConnection `json:"workflowRules"`
+}
+
+// GetWorkflowRules returns ListWorkflowRulesResponse.WorkflowRules, and is useful for accessing the field via an interface.
+func (v *ListWorkflowRulesResponse) GetWorkflowRules() *ListWorkflowRulesWorkflowRulesWorkflowRuleConnection {
+	return v.WorkflowRules
+}
+
+// ListWorkflowRulesWorkflowRulesWorkflowRuleConnection includes the requested fields of the GraphQL type WorkflowRuleConnection.
+type ListWorkflowRulesWorkflowRulesWorkflowRuleConnection struct {
+	Edges []*ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdge `json:"edges"`
+}
+
+// GetEdges returns ListWorkflowRulesWorkflowRulesWorkflowRuleConnection.Edges, and is useful for accessing the field via an interface.
+func (v *ListWorkflowRulesWorkflowRulesWorkflowRuleConnection) GetEdges() []*ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdge {
+	return v.Edges
+}
+
+// ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdge includes the requested fields of the GraphQL type WorkflowRuleEdge.
+type ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdge struct {
+	Node *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule `json:"node"`
+}
+
+// GetNode returns ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdge.Node, and is useful for accessing the field via an interface.
+func (v *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdge) GetNode() *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule {
+	return v.Node
+}
+
+// ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule includes the requested fields of the GraphQL type WorkflowRule.
+type ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule struct {
+	WorkflowRuleFields `json:"-"`
+}
+
+// GetId returns ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule.Id, and is useful for accessing the field via an interface.
+func (v *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule) GetId() string {
+	return v.WorkflowRuleFields.Id
+}
+
+// GetName returns ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule.Name, and is useful for accessing the field via an interface.
+func (v *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule) GetName() string {
+	return v.WorkflowRuleFields.Name
+}
+
+// GetPayload returns ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule.Payload, and is useful for accessing the field via an interface.
+func (v *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule) GetPayload() string {
+	return v.WorkflowRuleFields.Payload
+}
+
+// GetPublishedAt returns ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule.PublishedAt, and is useful for accessing the field via an interface.
+func (v *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule) GetPublishedAt() *WorkflowRuleFieldsPublishedAtDateTime {
+	return v.WorkflowRuleFields.PublishedAt
+}
+
+// GetOrder returns ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule.Order, and is useful for accessing the field via an interface.
+func (v *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule) GetOrder() int {
+	return v.WorkflowRuleFields.Order
+}
+
+func (v *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.WorkflowRuleFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Payload string `json:"payload"`
+
+	PublishedAt *WorkflowRuleFieldsPublishedAtDateTime `json:"publishedAt"`
+
+	Order int `json:"order"`
+}
+
+func (v *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule) __premarshalJSON() (*__premarshalListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule, error) {
+	var retval __premarshalListWorkflowRulesWorkflowRulesWorkflowRuleConnectionEdgesWorkflowRuleEdgeNodeWorkflowRule
+
+	retval.Id = v.WorkflowRuleFields.Id
+	retval.Name = v.WorkflowRuleFields.Name
+	retval.Payload = v.WorkflowRuleFields.Payload
+	retval.PublishedAt = v.WorkflowRuleFields.PublishedAt
+	retval.Order = v.WorkflowRuleFields.Order
+	return &retval, nil
+}
+
 // MutationErrorFields includes the GraphQL fields of MutationError requested by the fragment MutationErrorFields.
 // The GraphQL type's documentation follows.
 //
@@ -867,6 +1391,207 @@ type StringInput struct {
 // GetValue returns StringInput.Value, and is useful for accessing the field via an interface.
 func (v *StringInput) GetValue() string { return v.Value }
 
+type ToggleWorkflowRulePublishedInput struct {
+	WorkflowRuleId string `json:"workflowRuleId"`
+}
+
+// GetWorkflowRuleId returns ToggleWorkflowRulePublishedInput.WorkflowRuleId, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedInput) GetWorkflowRuleId() string { return v.WorkflowRuleId }
+
+// ToggleWorkflowRulePublishedResponse is returned by ToggleWorkflowRulePublished on success.
+type ToggleWorkflowRulePublishedResponse struct {
+	// Toggle the published state of a workflow rule. Published rules are active and will fire automatically; unpublished rules are drafts.
+	ToggleWorkflowRulePublished *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutput `json:"toggleWorkflowRulePublished"`
+}
+
+// GetToggleWorkflowRulePublished returns ToggleWorkflowRulePublishedResponse.ToggleWorkflowRulePublished, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedResponse) GetToggleWorkflowRulePublished() *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutput {
+	return v.ToggleWorkflowRulePublished
+}
+
+// ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutput includes the requested fields of the GraphQL type ToggleWorkflowRulePublishedOutput.
+type ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutput struct {
+	WorkflowRule *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule       `json:"workflowRule"`
+	Error        *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError `json:"error"`
+}
+
+// GetWorkflowRule returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutput.WorkflowRule, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutput) GetWorkflowRule() *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule {
+	return v.WorkflowRule
+}
+
+// GetError returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutput.Error, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutput) GetError() *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError {
+	return v.Error
+}
+
+// ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError includes the requested fields of the GraphQL type MutationError.
+// The GraphQL type's documentation follows.
+//
+// A type indicating an error has occurred while making a mutation.
+type ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError struct {
+	MutationErrorFields `json:"-"`
+}
+
+// GetMessage returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError) GetMessage() string {
+	return v.MutationErrorFields.Message
+}
+
+// GetType returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError.Type, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError) GetType() MutationErrorType {
+	return v.MutationErrorFields.Type
+}
+
+// GetCode returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError) GetCode() string {
+	return v.MutationErrorFields.Code
+}
+
+// GetFields returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError.Fields, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError) GetFields() []*MutationErrorFieldsFieldsMutationFieldError {
+	return v.MutationErrorFields.Fields
+}
+
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.MutationErrorFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError struct {
+	Message string `json:"message"`
+
+	Type MutationErrorType `json:"type"`
+
+	Code string `json:"code"`
+
+	Fields []*MutationErrorFieldsFieldsMutationFieldError `json:"fields"`
+}
+
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError) __premarshalJSON() (*__premarshalToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError, error) {
+	var retval __premarshalToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputErrorMutationError
+
+	retval.Message = v.MutationErrorFields.Message
+	retval.Type = v.MutationErrorFields.Type
+	retval.Code = v.MutationErrorFields.Code
+	retval.Fields = v.MutationErrorFields.Fields
+	return &retval, nil
+}
+
+// ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule includes the requested fields of the GraphQL type WorkflowRule.
+type ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule struct {
+	WorkflowRuleFields `json:"-"`
+}
+
+// GetId returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule.Id, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule) GetId() string {
+	return v.WorkflowRuleFields.Id
+}
+
+// GetName returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule.Name, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule) GetName() string {
+	return v.WorkflowRuleFields.Name
+}
+
+// GetPayload returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule.Payload, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule) GetPayload() string {
+	return v.WorkflowRuleFields.Payload
+}
+
+// GetPublishedAt returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule.PublishedAt, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule) GetPublishedAt() *WorkflowRuleFieldsPublishedAtDateTime {
+	return v.WorkflowRuleFields.PublishedAt
+}
+
+// GetOrder returns ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule.Order, and is useful for accessing the field via an interface.
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule) GetOrder() int {
+	return v.WorkflowRuleFields.Order
+}
+
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.WorkflowRuleFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Payload string `json:"payload"`
+
+	PublishedAt *WorkflowRuleFieldsPublishedAtDateTime `json:"publishedAt"`
+
+	Order int `json:"order"`
+}
+
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *ToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule) __premarshalJSON() (*__premarshalToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule, error) {
+	var retval __premarshalToggleWorkflowRulePublishedToggleWorkflowRulePublishedToggleWorkflowRulePublishedOutputWorkflowRule
+
+	retval.Id = v.WorkflowRuleFields.Id
+	retval.Name = v.WorkflowRuleFields.Name
+	retval.Payload = v.WorkflowRuleFields.Payload
+	retval.PublishedAt = v.WorkflowRuleFields.PublishedAt
+	retval.Order = v.WorkflowRuleFields.Order
+	return &retval, nil
+}
+
 type UpdateWorkflowInput struct {
 	WorkflowId string       `json:"workflowId"`
 	Name       *StringInput `json:"name,omitempty"`
@@ -905,6 +1630,220 @@ type UpdateWorkflowResponse struct {
 // GetUpdateWorkflow returns UpdateWorkflowResponse.UpdateWorkflow, and is useful for accessing the field via an interface.
 func (v *UpdateWorkflowResponse) GetUpdateWorkflow() *UpdateWorkflowUpdateWorkflowUpdateWorkflowOutput {
 	return v.UpdateWorkflow
+}
+
+type UpdateWorkflowRuleInput struct {
+	WorkflowRuleId string       `json:"workflowRuleId"`
+	Name           *StringInput `json:"name,omitempty"`
+	// JSON-encoded payload of the rule definition.
+	Payload *StringInput `json:"payload,omitempty"`
+	Order   *IntInput    `json:"order,omitempty"`
+}
+
+// GetWorkflowRuleId returns UpdateWorkflowRuleInput.WorkflowRuleId, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleInput) GetWorkflowRuleId() string { return v.WorkflowRuleId }
+
+// GetName returns UpdateWorkflowRuleInput.Name, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleInput) GetName() *StringInput { return v.Name }
+
+// GetPayload returns UpdateWorkflowRuleInput.Payload, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleInput) GetPayload() *StringInput { return v.Payload }
+
+// GetOrder returns UpdateWorkflowRuleInput.Order, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleInput) GetOrder() *IntInput { return v.Order }
+
+// UpdateWorkflowRuleResponse is returned by UpdateWorkflowRule on success.
+type UpdateWorkflowRuleResponse struct {
+	// Update the name, payload, or display order of an existing workflow rule.
+	UpdateWorkflowRule *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutput `json:"updateWorkflowRule"`
+}
+
+// GetUpdateWorkflowRule returns UpdateWorkflowRuleResponse.UpdateWorkflowRule, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleResponse) GetUpdateWorkflowRule() *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutput {
+	return v.UpdateWorkflowRule
+}
+
+// UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutput includes the requested fields of the GraphQL type UpdateWorkflowRuleOutput.
+type UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutput struct {
+	WorkflowRule *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule       `json:"workflowRule"`
+	Error        *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError `json:"error"`
+}
+
+// GetWorkflowRule returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutput.WorkflowRule, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutput) GetWorkflowRule() *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule {
+	return v.WorkflowRule
+}
+
+// GetError returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutput.Error, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutput) GetError() *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError {
+	return v.Error
+}
+
+// UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError includes the requested fields of the GraphQL type MutationError.
+// The GraphQL type's documentation follows.
+//
+// A type indicating an error has occurred while making a mutation.
+type UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError struct {
+	MutationErrorFields `json:"-"`
+}
+
+// GetMessage returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError.Message, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError) GetMessage() string {
+	return v.MutationErrorFields.Message
+}
+
+// GetType returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError.Type, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError) GetType() MutationErrorType {
+	return v.MutationErrorFields.Type
+}
+
+// GetCode returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError.Code, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError) GetCode() string {
+	return v.MutationErrorFields.Code
+}
+
+// GetFields returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError.Fields, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError) GetFields() []*MutationErrorFieldsFieldsMutationFieldError {
+	return v.MutationErrorFields.Fields
+}
+
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.MutationErrorFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalUpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError struct {
+	Message string `json:"message"`
+
+	Type MutationErrorType `json:"type"`
+
+	Code string `json:"code"`
+
+	Fields []*MutationErrorFieldsFieldsMutationFieldError `json:"fields"`
+}
+
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError) __premarshalJSON() (*__premarshalUpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError, error) {
+	var retval __premarshalUpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputErrorMutationError
+
+	retval.Message = v.MutationErrorFields.Message
+	retval.Type = v.MutationErrorFields.Type
+	retval.Code = v.MutationErrorFields.Code
+	retval.Fields = v.MutationErrorFields.Fields
+	return &retval, nil
+}
+
+// UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule includes the requested fields of the GraphQL type WorkflowRule.
+type UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule struct {
+	WorkflowRuleFields `json:"-"`
+}
+
+// GetId returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule.Id, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule) GetId() string {
+	return v.WorkflowRuleFields.Id
+}
+
+// GetName returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule.Name, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule) GetName() string {
+	return v.WorkflowRuleFields.Name
+}
+
+// GetPayload returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule.Payload, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule) GetPayload() string {
+	return v.WorkflowRuleFields.Payload
+}
+
+// GetPublishedAt returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule.PublishedAt, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule) GetPublishedAt() *WorkflowRuleFieldsPublishedAtDateTime {
+	return v.WorkflowRuleFields.PublishedAt
+}
+
+// GetOrder returns UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule.Order, and is useful for accessing the field via an interface.
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule) GetOrder() int {
+	return v.WorkflowRuleFields.Order
+}
+
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule) UnmarshalJSON(b []byte) error {
+
+	if string(b) == "null" {
+		return nil
+	}
+
+	var firstPass struct {
+		*UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule
+		graphql.NoUnmarshalJSON
+	}
+	firstPass.UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule = v
+
+	err := json.Unmarshal(b, &firstPass)
+	if err != nil {
+		return err
+	}
+
+	err = json.Unmarshal(
+		b, &v.WorkflowRuleFields)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type __premarshalUpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule struct {
+	Id string `json:"id"`
+
+	Name string `json:"name"`
+
+	Payload string `json:"payload"`
+
+	PublishedAt *WorkflowRuleFieldsPublishedAtDateTime `json:"publishedAt"`
+
+	Order int `json:"order"`
+}
+
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule) MarshalJSON() ([]byte, error) {
+	premarshaled, err := v.__premarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(premarshaled)
+}
+
+func (v *UpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule) __premarshalJSON() (*__premarshalUpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule, error) {
+	var retval __premarshalUpdateWorkflowRuleUpdateWorkflowRuleUpdateWorkflowRuleOutputWorkflowRule
+
+	retval.Id = v.WorkflowRuleFields.Id
+	retval.Name = v.WorkflowRuleFields.Name
+	retval.Payload = v.WorkflowRuleFields.Payload
+	retval.PublishedAt = v.WorkflowRuleFields.PublishedAt
+	retval.Order = v.WorkflowRuleFields.Order
+	return &retval, nil
 }
 
 // UpdateWorkflowUpdateWorkflowUpdateWorkflowOutput includes the requested fields of the GraphQL type UpdateWorkflowOutput.
@@ -1259,6 +2198,43 @@ func (v *WorkflowFieldsStepsWorkflowStep) __premarshalJSON() (*__premarshalWorkf
 	return &retval, nil
 }
 
+// WorkflowRuleFields includes the GraphQL fields of WorkflowRule requested by the fragment WorkflowRuleFields.
+type WorkflowRuleFields struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	// JSON-encoded payload of the rule definition.
+	Payload string `json:"payload"`
+	// Timestamp when the rule was last published. Null means the rule is an inactive draft.
+	PublishedAt *WorkflowRuleFieldsPublishedAtDateTime `json:"publishedAt"`
+	// Display order of this rule relative to other rules. Lower values appear first.
+	Order int `json:"order"`
+}
+
+// GetId returns WorkflowRuleFields.Id, and is useful for accessing the field via an interface.
+func (v *WorkflowRuleFields) GetId() string { return v.Id }
+
+// GetName returns WorkflowRuleFields.Name, and is useful for accessing the field via an interface.
+func (v *WorkflowRuleFields) GetName() string { return v.Name }
+
+// GetPayload returns WorkflowRuleFields.Payload, and is useful for accessing the field via an interface.
+func (v *WorkflowRuleFields) GetPayload() string { return v.Payload }
+
+// GetPublishedAt returns WorkflowRuleFields.PublishedAt, and is useful for accessing the field via an interface.
+func (v *WorkflowRuleFields) GetPublishedAt() *WorkflowRuleFieldsPublishedAtDateTime {
+	return v.PublishedAt
+}
+
+// GetOrder returns WorkflowRuleFields.Order, and is useful for accessing the field via an interface.
+func (v *WorkflowRuleFields) GetOrder() int { return v.Order }
+
+// WorkflowRuleFieldsPublishedAtDateTime includes the requested fields of the GraphQL type DateTime.
+type WorkflowRuleFieldsPublishedAtDateTime struct {
+	Iso8601 string `json:"iso8601"`
+}
+
+// GetIso8601 returns WorkflowRuleFieldsPublishedAtDateTime.Iso8601, and is useful for accessing the field via an interface.
+func (v *WorkflowRuleFieldsPublishedAtDateTime) GetIso8601() string { return v.Iso8601 }
+
 // WorkflowStepFields includes the GraphQL fields of WorkflowStep requested by the fragment WorkflowStepFields.
 type WorkflowStepFields struct {
 	Id         string `json:"id"`
@@ -1340,6 +2316,14 @@ type __CreateWorkflowInput struct {
 // GetInput returns __CreateWorkflowInput.Input, and is useful for accessing the field via an interface.
 func (v *__CreateWorkflowInput) GetInput() *CreateWorkflowInput { return v.Input }
 
+// __CreateWorkflowRuleInput is used internally by genqlient
+type __CreateWorkflowRuleInput struct {
+	Input *CreateWorkflowRuleInput `json:"input,omitempty"`
+}
+
+// GetInput returns __CreateWorkflowRuleInput.Input, and is useful for accessing the field via an interface.
+func (v *__CreateWorkflowRuleInput) GetInput() *CreateWorkflowRuleInput { return v.Input }
+
 // __DeleteWorkflowInput is used internally by genqlient
 type __DeleteWorkflowInput struct {
 	Input *DeleteWorkflowInput `json:"input,omitempty"`
@@ -1347,6 +2331,14 @@ type __DeleteWorkflowInput struct {
 
 // GetInput returns __DeleteWorkflowInput.Input, and is useful for accessing the field via an interface.
 func (v *__DeleteWorkflowInput) GetInput() *DeleteWorkflowInput { return v.Input }
+
+// __DeleteWorkflowRuleInput is used internally by genqlient
+type __DeleteWorkflowRuleInput struct {
+	Input *DeleteWorkflowRuleInput `json:"input,omitempty"`
+}
+
+// GetInput returns __DeleteWorkflowRuleInput.Input, and is useful for accessing the field via an interface.
+func (v *__DeleteWorkflowRuleInput) GetInput() *DeleteWorkflowRuleInput { return v.Input }
 
 // __GetWorkflowInput is used internally by genqlient
 type __GetWorkflowInput struct {
@@ -1356,6 +2348,32 @@ type __GetWorkflowInput struct {
 // GetWorkflowId returns __GetWorkflowInput.WorkflowId, and is useful for accessing the field via an interface.
 func (v *__GetWorkflowInput) GetWorkflowId() string { return v.WorkflowId }
 
+// __GetWorkflowRuleInput is used internally by genqlient
+type __GetWorkflowRuleInput struct {
+	WorkflowRuleId string `json:"workflowRuleId"`
+}
+
+// GetWorkflowRuleId returns __GetWorkflowRuleInput.WorkflowRuleId, and is useful for accessing the field via an interface.
+func (v *__GetWorkflowRuleInput) GetWorkflowRuleId() string { return v.WorkflowRuleId }
+
+// __ListWorkflowRulesInput is used internally by genqlient
+type __ListWorkflowRulesInput struct {
+	First int `json:"first"`
+}
+
+// GetFirst returns __ListWorkflowRulesInput.First, and is useful for accessing the field via an interface.
+func (v *__ListWorkflowRulesInput) GetFirst() int { return v.First }
+
+// __ToggleWorkflowRulePublishedInput is used internally by genqlient
+type __ToggleWorkflowRulePublishedInput struct {
+	Input *ToggleWorkflowRulePublishedInput `json:"input,omitempty"`
+}
+
+// GetInput returns __ToggleWorkflowRulePublishedInput.Input, and is useful for accessing the field via an interface.
+func (v *__ToggleWorkflowRulePublishedInput) GetInput() *ToggleWorkflowRulePublishedInput {
+	return v.Input
+}
+
 // __UpdateWorkflowInput is used internally by genqlient
 type __UpdateWorkflowInput struct {
 	Input *UpdateWorkflowInput `json:"input,omitempty"`
@@ -1363,6 +2381,14 @@ type __UpdateWorkflowInput struct {
 
 // GetInput returns __UpdateWorkflowInput.Input, and is useful for accessing the field via an interface.
 func (v *__UpdateWorkflowInput) GetInput() *UpdateWorkflowInput { return v.Input }
+
+// __UpdateWorkflowRuleInput is used internally by genqlient
+type __UpdateWorkflowRuleInput struct {
+	Input *UpdateWorkflowRuleInput `json:"input,omitempty"`
+}
+
+// GetInput returns __UpdateWorkflowRuleInput.Input, and is useful for accessing the field via an interface.
+func (v *__UpdateWorkflowRuleInput) GetInput() *UpdateWorkflowRuleInput { return v.Input }
 
 // The mutation executed by BulkUpsertWorkflowSteps.
 const BulkUpsertWorkflowSteps_Operation = `
@@ -1498,6 +2524,64 @@ func CreateWorkflow(
 	return data_, err_
 }
 
+// The mutation executed by CreateWorkflowRule.
+const CreateWorkflowRule_Operation = `
+mutation CreateWorkflowRule ($input: CreateWorkflowRuleInput!) {
+	createWorkflowRule(input: $input) {
+		workflowRule {
+			... WorkflowRuleFields
+		}
+		error {
+			... MutationErrorFields
+		}
+	}
+}
+fragment WorkflowRuleFields on WorkflowRule {
+	id
+	name
+	payload
+	publishedAt {
+		iso8601
+	}
+	order
+}
+fragment MutationErrorFields on MutationError {
+	message
+	type
+	code
+	fields {
+		field
+		message
+		type
+	}
+}
+`
+
+func CreateWorkflowRule(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input *CreateWorkflowRuleInput,
+) (data_ *CreateWorkflowRuleResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "CreateWorkflowRule",
+		Query:  CreateWorkflowRule_Operation,
+		Variables: &__CreateWorkflowRuleInput{
+			Input: input,
+		},
+	}
+
+	data_ = &CreateWorkflowRuleResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The mutation executed by DeleteWorkflow.
 const DeleteWorkflow_Operation = `
 mutation DeleteWorkflow ($input: DeleteWorkflowInput!) {
@@ -1533,6 +2617,52 @@ func DeleteWorkflow(
 	}
 
 	data_ = &DeleteWorkflowResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by DeleteWorkflowRule.
+const DeleteWorkflowRule_Operation = `
+mutation DeleteWorkflowRule ($input: DeleteWorkflowRuleInput!) {
+	deleteWorkflowRule(input: $input) {
+		error {
+			... MutationErrorFields
+		}
+	}
+}
+fragment MutationErrorFields on MutationError {
+	message
+	type
+	code
+	fields {
+		field
+		message
+		type
+	}
+}
+`
+
+func DeleteWorkflowRule(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input *DeleteWorkflowRuleInput,
+) (data_ *DeleteWorkflowRuleResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "DeleteWorkflowRule",
+		Query:  DeleteWorkflowRule_Operation,
+		Variables: &__DeleteWorkflowRuleInput{
+			Input: input,
+		},
+	}
+
+	data_ = &DeleteWorkflowRuleResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
@@ -1590,6 +2720,158 @@ func GetWorkflow(
 	}
 
 	data_ = &GetWorkflowResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by GetWorkflowRule.
+const GetWorkflowRule_Operation = `
+query GetWorkflowRule ($workflowRuleId: ID!) {
+	workflowRule(workflowRuleId: $workflowRuleId) {
+		... WorkflowRuleFields
+	}
+}
+fragment WorkflowRuleFields on WorkflowRule {
+	id
+	name
+	payload
+	publishedAt {
+		iso8601
+	}
+	order
+}
+`
+
+func GetWorkflowRule(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	workflowRuleId string,
+) (data_ *GetWorkflowRuleResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "GetWorkflowRule",
+		Query:  GetWorkflowRule_Operation,
+		Variables: &__GetWorkflowRuleInput{
+			WorkflowRuleId: workflowRuleId,
+		},
+	}
+
+	data_ = &GetWorkflowRuleResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The query executed by ListWorkflowRules.
+const ListWorkflowRules_Operation = `
+query ListWorkflowRules ($first: Int!) {
+	workflowRules(first: $first) {
+		edges {
+			node {
+				... WorkflowRuleFields
+			}
+		}
+	}
+}
+fragment WorkflowRuleFields on WorkflowRule {
+	id
+	name
+	payload
+	publishedAt {
+		iso8601
+	}
+	order
+}
+`
+
+// Only used by the acceptance tests, to borrow a payload shape Plain accepts.
+// Plain does not document the rule payload format anywhere in its schema.
+func ListWorkflowRules(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	first int,
+) (data_ *ListWorkflowRulesResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ListWorkflowRules",
+		Query:  ListWorkflowRules_Operation,
+		Variables: &__ListWorkflowRulesInput{
+			First: first,
+		},
+	}
+
+	data_ = &ListWorkflowRulesResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by ToggleWorkflowRulePublished.
+const ToggleWorkflowRulePublished_Operation = `
+mutation ToggleWorkflowRulePublished ($input: ToggleWorkflowRulePublishedInput!) {
+	toggleWorkflowRulePublished(input: $input) {
+		workflowRule {
+			... WorkflowRuleFields
+		}
+		error {
+			... MutationErrorFields
+		}
+	}
+}
+fragment WorkflowRuleFields on WorkflowRule {
+	id
+	name
+	payload
+	publishedAt {
+		iso8601
+	}
+	order
+}
+fragment MutationErrorFields on MutationError {
+	message
+	type
+	code
+	fields {
+		field
+		message
+		type
+	}
+}
+`
+
+// Plain has no isPublished field on a rule: publishing is a toggle. Callers must
+// know the current state before firing this, hence the publishedAt selection.
+func ToggleWorkflowRulePublished(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input *ToggleWorkflowRulePublishedInput,
+) (data_ *ToggleWorkflowRulePublishedResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "ToggleWorkflowRulePublished",
+		Query:  ToggleWorkflowRulePublished_Operation,
+		Variables: &__ToggleWorkflowRulePublishedInput{
+			Input: input,
+		},
+	}
+
+	data_ = &ToggleWorkflowRulePublishedResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(
@@ -1662,6 +2944,64 @@ func UpdateWorkflow(
 	}
 
 	data_ = &UpdateWorkflowResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
+// The mutation executed by UpdateWorkflowRule.
+const UpdateWorkflowRule_Operation = `
+mutation UpdateWorkflowRule ($input: UpdateWorkflowRuleInput!) {
+	updateWorkflowRule(input: $input) {
+		workflowRule {
+			... WorkflowRuleFields
+		}
+		error {
+			... MutationErrorFields
+		}
+	}
+}
+fragment WorkflowRuleFields on WorkflowRule {
+	id
+	name
+	payload
+	publishedAt {
+		iso8601
+	}
+	order
+}
+fragment MutationErrorFields on MutationError {
+	message
+	type
+	code
+	fields {
+		field
+		message
+		type
+	}
+}
+`
+
+func UpdateWorkflowRule(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	input *UpdateWorkflowRuleInput,
+) (data_ *UpdateWorkflowRuleResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "UpdateWorkflowRule",
+		Query:  UpdateWorkflowRule_Operation,
+		Variables: &__UpdateWorkflowRuleInput{
+			Input: input,
+		},
+	}
+
+	data_ = &UpdateWorkflowRuleResponse{}
 	resp_ := &graphql.Response{Data: data_}
 
 	err_ = client_.MakeRequest(

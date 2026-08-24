@@ -186,8 +186,9 @@ func TestStepsContentChangedCatchesPayloadEdits(t *testing.T) {
 }
 
 func TestSortedKeysIsDeterministic(t *testing.T) {
-	// Result-to-input mapping in the ID-discovery pass is positional, so the
-	// order steps are sent in must not depend on Go's map iteration.
+	// Steps go up in a fixed order so the same config produces byte-identical
+	// requests, which keeps diffs against Plain readable and makes a failed
+	// apply reproducible. Go's map iteration order must not leak into that.
 	steps := map[string]stepModel{
 		"zebra": step("ACTION", "", "", ""),
 		"alpha": step("ACTION", "", "", ""),

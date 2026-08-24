@@ -66,23 +66,30 @@ func (r *workflowResource) ValidateConfig(ctx context.Context, req resource.Vali
 		return
 	}
 
+	resp.Diagnostics.Append(validateStepGraph(steps, config.StartStep)...)
+}
+
+// validateStepGraph holds the actual rules, separated from the framework
+// plumbing so it can be exercised without a configured provider.
+func validateStepGraph(steps map[string]stepModel, startStep types.String) diag.Diagnostics {
+	var diags diag.Diagnostics
 	stepsPath := path("steps")
 
-	if len(steps) > 0 && config.StartStep.IsNull() {
-		resp.Diagnostics.AddAttributeError(
+	if len(steps) > 0 && startStep.IsNull() {
+		diags.AddAttributeError(
 			path("start_step"),
 			"start_step is required when steps are defined",
 			"A workflow with steps needs an entry point. Set start_step to one of the keys in steps.",
 		)
 	}
 
-	if !config.StartStep.IsNull() && !config.StartStep.IsUnknown() {
-		if _, ok := steps[config.StartStep.ValueString()]; !ok {
-			resp.Diagnostics.AddAttributeError(
+	if !startStep.IsNull() && !startStep.IsUnknown() {
+		if _, ok := steps[startStep.ValueString()]; !ok {
+			diags.AddAttributeError(
 				path("start_step"),
 				"start_step does not match any step",
 				fmt.Sprintf("start_step is %q, but steps has no such key. Known keys: %v.",
-					config.StartStep.ValueString(), sortedKeys(steps)),
+					startStep.ValueString(), sortedKeys(steps)),
 			)
 		}
 	}
@@ -95,7 +102,7 @@ func (r *workflowResource) ValidateConfig(ctx context.Context, req resource.Vali
 		// The branch attributes are mutually exclusive by step type: mixing them
 		// would silently drop transitions when mapped to Plain's positional array.
 		if isCondition && !step.Next.IsNull() {
-			resp.Diagnostics.AddAttributeError(
+			diags.AddAttributeError(
 				stepPath.AtName("next"),
 				"next is not valid on a CONDITION step",
 				fmt.Sprintf("Step %q is a CONDITION, which branches via on_true and on_false. Remove next.", key),
@@ -109,7 +116,7 @@ func (r *workflowResource) ValidateConfig(ctx context.Context, req resource.Vali
 					value = step.OnFalse
 				}
 				if !value.IsNull() {
-					resp.Diagnostics.AddAttributeError(
+					diags.AddAttributeError(
 						stepPath.AtName(attrName),
 						fmt.Sprintf("%s is only valid on a CONDITION step", attrName),
 						fmt.Sprintf("Step %q is a %s, which continues via next. Remove %s.",
@@ -129,7 +136,7 @@ func (r *workflowResource) ValidateConfig(ctx context.Context, req resource.Vali
 				continue
 			}
 			if _, ok := steps[target.ValueString()]; !ok {
-				resp.Diagnostics.AddAttributeError(
+				diags.AddAttributeError(
 					stepPath.AtName(names[i]),
 					"Transition target does not match any step",
 					fmt.Sprintf("Step %q points %s at %q, but steps has no such key. Known keys: %v.",
@@ -138,6 +145,8 @@ func (r *workflowResource) ValidateConfig(ctx context.Context, req resource.Vali
 			}
 		}
 	}
+
+	return diags
 }
 
 // syncSteps reconciles the workflow's entire step graph in one mutation.

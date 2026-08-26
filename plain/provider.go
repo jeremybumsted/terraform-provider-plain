@@ -105,7 +105,6 @@ func (p *plainProvider) Configure(ctx context.Context, req provider.ConfigureReq
 func (p *plainProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewWorkflowResource,
-		NewWorkflowRuleResource,
 	}
 }
 

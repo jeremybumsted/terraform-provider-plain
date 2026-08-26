@@ -15,26 +15,17 @@ type mutationError interface {
 }
 
 // Each resource maps the Plain input fields it actually sends onto its own
-// attribute names, so a field error lands on the attribute at fault. The maps
-// are per-resource on purpose: "payload" means a step payload to a workflow and
-// the whole rule definition to a rule, and a shared map would attach a
-// bulkUpsertWorkflowSteps error to a root attribute that does not exist.
-var (
-	workflowAttributes = map[string]string{
-		"name":        "name",
-		"trigger":     "trigger",
-		"order":       "order",
-		"isPublished": "published",
-		"startStepId": "start_step",
-		"steps":       "steps",
-	}
-
-	workflowRuleAttributes = map[string]string{
-		"name":    "name",
-		"payload": "payload",
-		"order":   "order",
-	}
-)
+// attribute names, so a field error lands on the attribute at fault. The map is
+// per-resource on purpose: a shared one would attach a bulkUpsertWorkflowSteps
+// error to a root attribute that does not exist.
+var workflowAttributes = map[string]string{
+	"name":        "name",
+	"trigger":     "trigger",
+	"order":       "order",
+	"isPublished": "published",
+	"startStepId": "start_step",
+	"steps":       "steps",
+}
 
 // mutationDiags converts a Plain MutationError into diagnostics.
 //

@@ -5,17 +5,16 @@ Manage [Plain](https://www.plain.com) workspace configuration as code.
 > **Status: early development.** Scope is workflows only. `plain_workflow` is
 > implemented, and its acceptance tests pass against a live workspace — covering
 > the create/update/destroy cycle, import, step reconciliation and the publish
-> lifecycle. `plain_workflow_rule` is implemented but has **not** been exercised
-> end-to-end: Plain does not document the rule payload format, so its acceptance
-> tests skip unless the workspace already contains a rule to borrow a shape
-> from. See [AGENTS.md](./AGENTS.md) for design notes.
+> lifecycle. See [AGENTS.md](./AGENTS.md) for design notes.
 
 ## Resources
 
 | Resource | Description |
 |---|---|
 | `plain_workflow` | Trigger plus the full step graph — conditions, actions and waits |
-| `plain_workflow_rule` | A single named JSON rule definition — Plain's older, flat automation model |
+
+Workflow rules — Plain's older, flat automation model — are deprecated by Plain
+and are not managed by this provider.
 
 ### `plain_workflow`
 
@@ -64,26 +63,6 @@ There is deliberately no `plain_workflow_step` resource: steps reference each
 other by ID, and modelling them separately produces a mutually-referencing graph
 Terraform cannot order.
 
-### `plain_workflow_rule`
-
-Workflow rules are Plain's older automation model — flat, with no steps and no
-graph. Use `plain_workflow` for new automation; this resource exists to manage
-rules that already exist.
-
-```hcl
-resource "plain_workflow_rule" "auto_label_billing" {
-  name      = "Auto-label billing threads"
-  published = true
-
-  payload = file("${path.module}/rules/auto-label-billing.json")
-}
-```
-
-Plain publishes no schema for rule payloads, describing the field only as
-"JSON-encoded payload of the rule definition". Keeping the payload in a file
-avoids guessing at a shape; to get a starting point, read an existing rule's
-payload back from the API.
-
 ## Usage
 
 ```hcl
@@ -118,10 +97,6 @@ Unit tests need no credentials. Acceptance tests create and destroy real objects
 ```sh
 PLAIN_API_KEY=... mise run testacc
 ```
-
-The `plain_workflow_rule` tests need a payload Plain will accept. They borrow
-one from an existing rule in the workspace, and skip if there is none; set
-`PLAIN_ACC_RULE_PAYLOAD` to supply one directly.
 
 ## License
 

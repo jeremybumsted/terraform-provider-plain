@@ -93,28 +93,15 @@ broadcasts) which must never go into Terraform state regardless.
 | Resource | Status | Mutations | Read |
 |---|---|---|---|
 | `plain_workflow` | implemented | `createWorkflow` / `updateWorkflow` / `deleteWorkflow` / `bulkUpsertWorkflowSteps` | `workflow` |
-| `plain_workflow_rule` | implemented | `createWorkflowRule` / `updateWorkflowRule` / `toggleWorkflowRulePublished` / `deleteWorkflowRule` | `workflowRule`, `workflowRules` |
 
-`WorkflowRule` is a separate, flat concept that happens to share the name — a
-named JSON payload with no steps and no graph, and Plain's older automation
-model. Everything that makes `plain_workflow` complicated is absent: no graph,
-no key-to-ID resolution, no publish sequencing. Two things about it still need
-care:
-
-- **Publishing is a toggle, not a field.** There is no `isPublished` on
-  `UpdateWorkflowRuleInput`; `toggleWorkflowRulePublished` flips whatever the
-  current state is. Firing it unconditionally would invert the rule on every
-  update, publishing drafts nobody asked to publish. `setRulePublished` takes
-  both the current and wanted state, does nothing when they agree, and errors
-  rather than re-toggling if the result is not what was asked for — a mismatch
-  means someone changed the rule outside Terraform, and toggling again would
-  race them. The provider presents a single `published` attribute on both
-  resources and hides the difference.
-- **The rule payload shape is undocumented.** Plain's schema says only
-  "JSON-encoded payload of the rule definition" — no field list, unlike step
-  payloads. Do not invent one: the example loads the payload from a file rather
-  than showing fabricated fields, and the acceptance tests borrow a shape from a
-  rule that already exists in the workspace.
+**`WorkflowRule` is out of scope — deprecated by Plain.** It is a separate, flat
+concept that happens to share the name: a named JSON payload with no steps and
+no graph, Plain's older automation model. The provider had a
+`plain_workflow_rule` resource and it has been removed. Plain still exposes
+`createWorkflowRule` / `updateWorkflowRule` / `toggleWorkflowRulePublished` /
+`deleteWorkflowRule` and the `workflowRule`/`workflowRules` queries, but the
+feature is no longer supported — the surviving GraphQL is not a reason to bring
+the resource back. Do not re-add it.
 
 **Design decision: `plain_workflow` owns its whole step graph.** Plain models
 steps as separately-addressable entities (`createWorkflowStep`,
@@ -238,10 +225,3 @@ treatment via `checkImportedPayloads`, since `steps` is already ignored
 wholesale for the rekeying and they would otherwise go unverified entirely. Any
 new JSON attribute needs the same handling — ignoring it without adding a
 semantic check silently drops it from the test.
-
-The `plain_workflow_rule` tests need a payload Plain will accept, and Plain does
-not document the shape. They borrow one from an existing rule in the workspace,
-or from `PLAIN_ACC_RULE_PAYLOAD`, and **skip** if neither is available — so a
-green run in an empty workspace does not mean the rule resource was exercised.
-`TestAccWorkflowRule_invalidPayload` needs no known-good payload and always
-runs.

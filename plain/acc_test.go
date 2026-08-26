@@ -25,21 +25,6 @@ var testAccProtoV6ProviderFactories = map[string]func() (tfprotov6.ProviderServe
 const providerConfig = `provider "plain" {}
 `
 
-// skipUnlessAcc guards helpers that talk to Plain before resource.Test runs.
-//
-// resource.Test skips on its own when TF_ACC is unset, but only once it has been
-// called. Anything that reaches the API while building a test case — fetching a
-// payload shape, say — runs during an ordinary `go test` and fails there.
-func skipUnlessAcc(t *testing.T) {
-	t.Helper()
-
-	if os.Getenv(resource.EnvTfAcc) == "" {
-		t.Skipf("acceptance test skipped: set %s to run it", resource.EnvTfAcc)
-	}
-
-	testAccPreCheck(t)
-}
-
 func testAccPreCheck(t *testing.T) {
 	t.Helper()
 
@@ -175,24 +160,6 @@ func testAccCheckWorkflowDestroyed(s *terraform.State) error {
 			return fmt.Errorf("checking %s was destroyed: %w", name, err)
 		}
 		if resp.Workflow != nil {
-			return fmt.Errorf("%s (%s) still exists in Plain after destroy", name, rs.Primary.ID)
-		}
-	}
-
-	return nil
-}
-
-func testAccCheckWorkflowRuleDestroyed(s *terraform.State) error {
-	for name, rs := range s.RootModule().Resources {
-		if rs.Type != "plain_workflow_rule" {
-			continue
-		}
-
-		resp, err := GetWorkflowRule(context.Background(), testAccClient(), rs.Primary.ID)
-		if err != nil {
-			return fmt.Errorf("checking %s was destroyed: %w", name, err)
-		}
-		if resp.WorkflowRule != nil {
 			return fmt.Errorf("%s (%s) still exists in Plain after destroy", name, rs.Primary.ID)
 		}
 	}

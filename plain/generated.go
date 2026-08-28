@@ -293,28 +293,6 @@ func (v *BulkUpsertWorkflowStepsBulkUpsertWorkflowStepsBulkUpsertWorkflowStepsOu
 	return &retval, nil
 }
 
-type BulkUpsertWorkflowStepsInput struct {
-	WorkflowId string `json:"workflowId"`
-	// The complete list of steps. Steps with existing IDs are updated, new IDs are created, missing IDs are deleted.
-	Steps []*BulkUpsertWorkflowStepInput `json:"steps,omitempty"`
-	// Optional: Set this as the workflow's startStepId. Use null to clear. If not provided, startStepId is unchanged. Clearing to null fails on a published workflow — unpublish before restructuring, then republish.
-	StartStepId *string `json:"startStepId"`
-	// Optional: JSON-encoded trigger configuration. If not provided, trigger is unchanged. See `Workflow.trigger` for the valid `type` values and their required fields.
-	Trigger *StringInput `json:"trigger,omitempty"`
-}
-
-// GetWorkflowId returns BulkUpsertWorkflowStepsInput.WorkflowId, and is useful for accessing the field via an interface.
-func (v *BulkUpsertWorkflowStepsInput) GetWorkflowId() string { return v.WorkflowId }
-
-// GetSteps returns BulkUpsertWorkflowStepsInput.Steps, and is useful for accessing the field via an interface.
-func (v *BulkUpsertWorkflowStepsInput) GetSteps() []*BulkUpsertWorkflowStepInput { return v.Steps }
-
-// GetStartStepId returns BulkUpsertWorkflowStepsInput.StartStepId, and is useful for accessing the field via an interface.
-func (v *BulkUpsertWorkflowStepsInput) GetStartStepId() *string { return v.StartStepId }
-
-// GetTrigger returns BulkUpsertWorkflowStepsInput.Trigger, and is useful for accessing the field via an interface.
-func (v *BulkUpsertWorkflowStepsInput) GetTrigger() *StringInput { return v.Trigger }
-
 // BulkUpsertWorkflowStepsResponse is returned by BulkUpsertWorkflowSteps on success.
 type BulkUpsertWorkflowStepsResponse struct {
 	// Atomically replace all steps in a workflow. Steps with a matching `stepId` are updated; steps without an ID (or with a new ID) are created; steps that existed before but are absent from the input are deleted.
@@ -1326,11 +1304,19 @@ var AllWorkflowStepType = []WorkflowStepType{
 
 // __BulkUpsertWorkflowStepsInput is used internally by genqlient
 type __BulkUpsertWorkflowStepsInput struct {
-	Input *BulkUpsertWorkflowStepsInput `json:"input,omitempty"`
+	WorkflowId  string                         `json:"workflowId"`
+	Steps       []*BulkUpsertWorkflowStepInput `json:"steps"`
+	StartStepId *string                        `json:"startStepId"`
 }
 
-// GetInput returns __BulkUpsertWorkflowStepsInput.Input, and is useful for accessing the field via an interface.
-func (v *__BulkUpsertWorkflowStepsInput) GetInput() *BulkUpsertWorkflowStepsInput { return v.Input }
+// GetWorkflowId returns __BulkUpsertWorkflowStepsInput.WorkflowId, and is useful for accessing the field via an interface.
+func (v *__BulkUpsertWorkflowStepsInput) GetWorkflowId() string { return v.WorkflowId }
+
+// GetSteps returns __BulkUpsertWorkflowStepsInput.Steps, and is useful for accessing the field via an interface.
+func (v *__BulkUpsertWorkflowStepsInput) GetSteps() []*BulkUpsertWorkflowStepInput { return v.Steps }
+
+// GetStartStepId returns __BulkUpsertWorkflowStepsInput.StartStepId, and is useful for accessing the field via an interface.
+func (v *__BulkUpsertWorkflowStepsInput) GetStartStepId() *string { return v.StartStepId }
 
 // __CreateWorkflowInput is used internally by genqlient
 type __CreateWorkflowInput struct {
@@ -1366,8 +1352,8 @@ func (v *__UpdateWorkflowInput) GetInput() *UpdateWorkflowInput { return v.Input
 
 // The mutation executed by BulkUpsertWorkflowSteps.
 const BulkUpsertWorkflowSteps_Operation = `
-mutation BulkUpsertWorkflowSteps ($input: BulkUpsertWorkflowStepsInput!) {
-	bulkUpsertWorkflowSteps(input: $input) {
+mutation BulkUpsertWorkflowSteps ($workflowId: ID!, $steps: [BulkUpsertWorkflowStepInput!] = [], $startStepId: ID) {
+	bulkUpsertWorkflowSteps(input: {workflowId:$workflowId,steps:$steps,startStepId:$startStepId}) {
 		results {
 			result
 			workflowStep {
@@ -1401,16 +1387,41 @@ fragment MutationErrorFields on MutationError {
 }
 `
 
+// The input object is built inline from top-level variables rather than taken as
+// a single $input, so that omitempty can be controlled per field.
+//
+// genqlient tags a schema-derived [T!]! input field with omitempty, which makes
+// encoding/json drop an empty list — so clearing a workflow's steps sent no
+// "steps" key at all and Plain rejected the mutation with
+// `Field "steps" of required type ... was not provided`. An empty list is a
+// legitimate value here: it is how a workflow's steps are cleared.
+//
+// The omitempty is forced by `use_struct_references: true` for anything derived
+// from an input object (genqlient convert.go, getStructReference), and the
+// directive that turns it off is refused on a non-null variable
+// ("omitempty may only be used on optional arguments"). So $steps is declared
+// nullable with a default of [], which makes the directive legal while the
+// default keeps it valid in the non-null `steps:` position. The provider always
+// passes a non-nil slice; the default is there to satisfy the type checker, not
+// as a value we rely on.
+//
+// trigger is deliberately not a variable. Plain accepts it on this mutation, but
+// the provider only ever writes the trigger through updateWorkflow, and a
+// nullable variable would risk sending an explicit `trigger: null`.
 func BulkUpsertWorkflowSteps(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	input *BulkUpsertWorkflowStepsInput,
+	workflowId string,
+	steps []*BulkUpsertWorkflowStepInput,
+	startStepId *string,
 ) (data_ *BulkUpsertWorkflowStepsResponse, err_ error) {
 	req_ := &graphql.Request{
 		OpName: "BulkUpsertWorkflowSteps",
 		Query:  BulkUpsertWorkflowSteps_Operation,
 		Variables: &__BulkUpsertWorkflowStepsInput{
-			Input: input,
+			WorkflowId:  workflowId,
+			Steps:       steps,
+			StartStepId: startStepId,
 		},
 	}
 

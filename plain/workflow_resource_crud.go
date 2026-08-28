@@ -169,12 +169,9 @@ func (r *workflowResource) syncSteps(
 	keys := sortedKeys(steps)
 
 	// A workflow with no steps: clear them, and clear the entry point with them.
+	// The empty slice has to reach the wire as "steps": [] — see bulkUpsert.
 	if len(keys) == 0 {
-		_, err := r.bulkUpsert(ctx, BulkUpsertWorkflowStepsInput{
-			WorkflowId:  workflowID,
-			Steps:       []*BulkUpsertWorkflowStepInput{},
-			StartStepId: nil,
-		})
+		_, err := r.bulkUpsert(ctx, workflowID, []*BulkUpsertWorkflowStepInput{}, nil)
 		return map[string]string{}, err
 	}
 
@@ -214,11 +211,7 @@ func (r *workflowResource) syncSteps(
 		}
 	}
 
-	if _, err := r.bulkUpsert(ctx, BulkUpsertWorkflowStepsInput{
-		WorkflowId:  workflowID,
-		Steps:       inputs,
-		StartStepId: startID,
-	}); err != nil {
+	if _, err := r.bulkUpsert(ctx, workflowID, inputs, startID); err != nil {
 		return nil, err
 	}
 
@@ -259,11 +252,23 @@ func stepInput(step stepModel, resolved map[string]string) *BulkUpsertWorkflowSt
 	return in
 }
 
+// bulkUpsert writes the whole step list in one call. steps is passed as its own
+// argument rather than inside a BulkUpsertWorkflowStepsInput because an empty
+// list is meaningful here — it is how the steps and the entry point are cleared
+// — and the generated input struct tags the field omitempty, which drops it from
+// the request body entirely. The operation takes top-level variables so that tag
+// can be turned off; see plain/graphql/operations/workflow.graphql.
+//
+// startStepId is a bare *string, so nil sends an explicit null and clears the
+// entry point. That is deliberate and is the only way to clear it: updateWorkflow
+// takes a StringInput, which cannot express null.
 func (r *workflowResource) bulkUpsert(
 	ctx context.Context,
-	input BulkUpsertWorkflowStepsInput,
+	workflowID string,
+	steps []*BulkUpsertWorkflowStepInput,
+	startStepID *string,
 ) ([]*BulkUpsertWorkflowStepsBulkUpsertWorkflowStepsBulkUpsertWorkflowStepsOutputResultsBulkUpsertWorkflowStepResultItem, error) {
-	resp, err := BulkUpsertWorkflowSteps(ctx, r.client, &input)
+	resp, err := BulkUpsertWorkflowSteps(ctx, r.client, workflowID, steps, startStepID)
 	if err != nil {
 		return nil, err
 	}

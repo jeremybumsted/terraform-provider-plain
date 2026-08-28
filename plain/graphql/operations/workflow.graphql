@@ -70,8 +70,36 @@ mutation DeleteWorkflow($input: DeleteWorkflowInput!) {
   }
 }
 
-mutation BulkUpsertWorkflowSteps($input: BulkUpsertWorkflowStepsInput!) {
-  bulkUpsertWorkflowSteps(input: $input) {
+# The input object is built inline from top-level variables rather than taken as
+# a single $input, so that omitempty can be controlled per field.
+#
+# genqlient tags a schema-derived [T!]! input field with omitempty, which makes
+# encoding/json drop an empty list — so clearing a workflow's steps sent no
+# "steps" key at all and Plain rejected the mutation with
+# `Field "steps" of required type ... was not provided`. An empty list is a
+# legitimate value here: it is how a workflow's steps are cleared.
+#
+# The omitempty is forced by `use_struct_references: true` for anything derived
+# from an input object (genqlient convert.go, getStructReference), and the
+# directive that turns it off is refused on a non-null variable
+# ("omitempty may only be used on optional arguments"). So $steps is declared
+# nullable with a default of [], which makes the directive legal while the
+# default keeps it valid in the non-null `steps:` position. The provider always
+# passes a non-nil slice; the default is there to satisfy the type checker, not
+# as a value we rely on.
+#
+# trigger is deliberately not a variable. Plain accepts it on this mutation, but
+# the provider only ever writes the trigger through updateWorkflow, and a
+# nullable variable would risk sending an explicit `trigger: null`.
+mutation BulkUpsertWorkflowSteps(
+  $workflowId: ID!
+  # @genqlient(omitempty: false)
+  $steps: [BulkUpsertWorkflowStepInput!] = []
+  $startStepId: ID
+) {
+  bulkUpsertWorkflowSteps(
+    input: { workflowId: $workflowId, steps: $steps, startStepId: $startStepId }
+  ) {
     results {
       result
       workflowStep {

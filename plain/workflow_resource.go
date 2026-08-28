@@ -3,6 +3,7 @@ package plain
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -214,7 +215,27 @@ func (r *workflowResource) Configure(_ context.Context, req resource.ConfigureRe
 }
 
 func (r *workflowResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	id := strings.TrimSpace(req.ID)
+
+	if !strings.HasPrefix(id, workflowIDPrefix) {
+		detail := fmt.Sprintf(
+			"Import a workflow by its Plain ID, which begins with %q — for example "+
+				"wf_01HXXXXXXXXXXXXXXXXXXXXXXX. Got %q.",
+			workflowIDPrefix, req.ID)
+
+		// The most likely wrong paste is a step ID, so name that case.
+		if strings.HasPrefix(id, stepIDPrefix) {
+			detail += fmt.Sprintf(
+				"\n\nThat looks like a workflow step ID (%q). Steps are not separately "+
+					"importable — they belong to the workflow that owns them, so import "+
+					"that workflow instead.", stepIDPrefix)
+		}
+
+		resp.Diagnostics.AddError("Invalid workflow import ID", detail)
+		return
+	}
+
 	// Plain IDs are prefixed and globally unique, so the bare ID is enough.
-	resource.ImportStatePassthroughID(ctx, path("id"), req, resp)
-	tflog.Info(ctx, "importing workflow; step keys will be set to Plain step IDs", map[string]any{"id": req.ID})
+	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path("id"), id)...)
+	tflog.Info(ctx, "importing workflow; step keys will be set to Plain step IDs", map[string]any{"id": id})
 }

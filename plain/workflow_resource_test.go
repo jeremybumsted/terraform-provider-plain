@@ -1,10 +1,16 @@
 package plain
 
 import (
+	"context"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 func step(stepType, next, onTrue, onFalse string) stepModel {
@@ -203,5 +209,77 @@ func TestSortedKeysIsDeterministic(t *testing.T) {
 				t.Fatalf("sortedKeys() = %v, want %v", got, want)
 			}
 		}
+	}
+}
+
+// TestImportStateRejectsNonWorkflowID covers the shape guard on the import
+// address. The rejecting cases return before touching resp.State, so a
+// zero-value ImportStateResponse is enough; the accepting cases need a real
+// tfsdk.State built from the resource schema so SetAttribute has somewhere to
+// write.
+func TestImportStateRejectsNonWorkflowID(t *testing.T) {
+	ctx := context.Background()
+
+	r := NewWorkflowResource()
+	schemaResp := &fwresource.SchemaResponse{}
+	r.Schema(ctx, fwresource.SchemaRequest{}, schemaResp)
+	if schemaResp.Diagnostics.HasError() {
+		t.Fatalf("schema: %v", schemaResp.Diagnostics)
+	}
+
+	tests := []struct {
+		name    string
+		id      string
+		wantErr bool
+		// wantID is the value expected in state when the address is accepted.
+		wantID string
+	}{
+		{name: "empty", id: "", wantErr: true},
+		{name: "not an id", id: "banana", wantErr: true},
+		{name: "step id", id: stepIDPrefix + "01HXXXXXXXXXXXXXXXXXXXXXXX", wantErr: true},
+		{name: "whitespace only", id: "   ", wantErr: true},
+		{name: "padded workflow id", id: "  wf_01HXXXXXXXXXXXXXXXXXXXXXXX  ", wantID: "wf_01HXXXXXXXXXXXXXXXXXXXXXXX"},
+		{name: "workflow id", id: "wf_01HXXXXXXXXXXXXXXXXXXXXXXX", wantID: "wf_01HXXXXXXXXXXXXXXXXXXXXXXX"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := &fwresource.ImportStateResponse{
+				State: tfsdk.State{
+					Schema: schemaResp.Schema,
+					Raw:    tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil),
+				},
+			}
+			r.(fwresource.ResourceWithImportState).ImportState(ctx, fwresource.ImportStateRequest{ID: tc.id}, resp)
+
+			if got := resp.Diagnostics.HasError(); got != tc.wantErr {
+				t.Fatalf("HasError() = %t, want %t (diags: %v)", got, tc.wantErr, resp.Diagnostics)
+			}
+			if tc.wantErr {
+				// The message must name the attribute shape, not echo the API.
+				detail := resp.Diagnostics.Errors()[0].Detail()
+				if !strings.Contains(detail, workflowIDPrefix) {
+					t.Errorf("detail does not mention %q: %s", workflowIDPrefix, detail)
+				}
+				// The untrimmed input is quoted so whitespace stays visible.
+				if !strings.Contains(detail, strconv.Quote(tc.id)) {
+					t.Errorf("detail does not quote the raw ID %q: %s", tc.id, detail)
+				}
+				// A step ID gets the extra "steps are not importable" paragraph.
+				wantStepHint := strings.HasPrefix(strings.TrimSpace(tc.id), stepIDPrefix)
+				if got := strings.Contains(detail, "not separately"); got != wantStepHint {
+					t.Errorf("step-ID hint present = %t, want %t: %s", got, wantStepHint, detail)
+				}
+				return
+			}
+
+			var gotID types.String
+			if diags := resp.State.GetAttribute(ctx, path("id"), &gotID); diags.HasError() {
+				t.Fatalf("reading id back: %v", diags)
+			}
+			if gotID.ValueString() != tc.wantID {
+				t.Errorf("state id = %q, want %q", gotID.ValueString(), tc.wantID)
+			}
+		})
 	}
 }

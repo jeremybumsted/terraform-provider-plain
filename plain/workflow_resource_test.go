@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -279,6 +280,64 @@ func TestImportStateRejectsNonWorkflowID(t *testing.T) {
 			}
 			if gotID.ValueString() != tc.wantID {
 				t.Errorf("state id = %q, want %q", gotID.ValueString(), tc.wantID)
+			}
+		})
+	}
+}
+
+// TestMatchEmptyStepsShape covers the null-versus-empty distinction Terraform
+// enforces on an Optional attribute. read collapses "no steps" to null, which
+// is right for a config that omits steps and wrong for one that writes
+// `steps = {}` — the latter fails the apply with "Provider produced
+// inconsistent result after apply" unless the shape is restored.
+func TestMatchEmptyStepsShape(t *testing.T) {
+	objType := types.ObjectType{AttrTypes: stepAttrTypes()}
+	emptyMap := types.MapValueMust(objType, map[string]attr.Value{})
+	nullMap := types.MapNull(objType)
+	unknownMap := types.MapUnknown(objType)
+
+	populated := types.MapValueMust(objType, map[string]attr.Value{
+		"only": types.ObjectValueMust(stepAttrTypes(), map[string]attr.Value{
+			"id":         types.StringValue("wfs_01"),
+			"type":       types.StringValue("ACTION"),
+			"name":       types.StringValue("Raise priority"),
+			"payload":    jsontypes.NewNormalizedValue(`{"type":"set_priority"}`),
+			"next":       types.StringNull(),
+			"on_true":    types.StringNull(),
+			"on_false":   types.StringNull(),
+			"position_x": types.Float64Value(0),
+			"position_y": types.Float64Value(0),
+		}),
+	})
+
+	for _, tc := range []struct {
+		name         string
+		prior, fresh types.Map
+		want         types.Map
+	}{
+		// The case this exists for: config wrote an empty map, Plain has no
+		// steps, so read produced null. Must come back as an empty map.
+		{"empty prior, null fresh", emptyMap, nullMap, emptyMap},
+
+		// Config omitted steps entirely. Null is correct and must be left alone.
+		{"null prior, null fresh", nullMap, nullMap, nullMap},
+
+		// Nothing to restore: the workflow has steps.
+		{"empty prior, populated fresh", emptyMap, populated, populated},
+		{"null prior, populated fresh", nullMap, populated, populated},
+		{"populated prior, populated fresh", populated, populated, populated},
+
+		// A workflow whose steps were removed out of band, from a config that
+		// declared them. Null is the honest answer; the plan will show the diff.
+		{"populated prior, null fresh", populated, nullMap, nullMap},
+
+		// An unknown prior carries no shape to preserve.
+		{"unknown prior, null fresh", unknownMap, nullMap, nullMap},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := matchEmptyStepsShape(tc.prior, tc.fresh)
+			if !got.Equal(tc.want) {
+				t.Errorf("matchEmptyStepsShape(%v, %v) = %v, want %v", tc.prior, tc.fresh, got, tc.want)
 			}
 		})
 	}

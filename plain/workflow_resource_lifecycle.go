@@ -3,6 +3,7 @@ package plain
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -78,6 +79,7 @@ func (r *workflowResource) Create(ctx context.Context, req resource.CreateReques
 	keys := invert(resolved)
 	var state workflowModel
 	found, readDiags := r.read(ctx, workflowID, keys, &state)
+	state.Steps = matchEmptyStepsShape(plan.Steps, state.Steps)
 	resp.Diagnostics.Append(readDiags...)
 	if resp.Diagnostics.HasError() {
 		saveID()
@@ -107,6 +109,7 @@ func (r *workflowResource) Read(ctx context.Context, req resource.ReadRequest, r
 
 	var fresh workflowModel
 	found, readDiags := r.read(ctx, state.ID.ValueString(), priorKeys, &fresh)
+	fresh.Steps = matchEmptyStepsShape(state.Steps, fresh.Steps)
 	resp.Diagnostics.Append(readDiags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -218,6 +221,7 @@ func (r *workflowResource) Update(ctx context.Context, req resource.UpdateReques
 	keys := invert(resolved)
 	var fresh workflowModel
 	found, readDiags := r.read(ctx, workflowID, keys, &fresh)
+	fresh.Steps = matchEmptyStepsShape(plan.Steps, fresh.Steps)
 	resp.Diagnostics.Append(readDiags...)
 	if resp.Diagnostics.HasError() {
 		return
@@ -290,6 +294,30 @@ func graphChanged(plan, state map[string]stepModel, planStart, stateStart types.
 	}
 
 	return false
+}
+
+// matchEmptyStepsShape preserves the caller's null-versus-empty distinction for
+// a workflow that has no steps.
+//
+// read cannot make this call itself: it collapses "no steps" to a null map,
+// because that is right for a config that omits the attribute entirely. But
+// steps is Optional and not Computed, so Terraform requires the applied value
+// to match the configured one exactly — a config that writes `steps = {}` and
+// gets null back fails the apply with "Provider produced inconsistent result".
+// Both spellings mean the same thing to Plain; only Terraform tells them apart.
+//
+// So the caller, which has the plan or the prior state, restores the shape.
+// Anything other than "fresh is null and prior was a known empty map" is left
+// alone.
+func matchEmptyStepsShape(prior, fresh types.Map) types.Map {
+	if !fresh.IsNull() || prior.IsNull() || prior.IsUnknown() {
+		return fresh
+	}
+	if len(prior.Elements()) != 0 {
+		return fresh
+	}
+
+	return types.MapValueMust(types.ObjectType{AttrTypes: stepAttrTypes()}, map[string]attr.Value{})
 }
 
 // stepsContentChanged reports whether anything about the steps needs writing,

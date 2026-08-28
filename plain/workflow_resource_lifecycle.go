@@ -51,7 +51,7 @@ func (r *workflowResource) Create(ctx context.Context, req resource.CreateReques
 		var err error
 		resolved, err = r.syncSteps(ctx, workflowID, steps, plan.StartStep, nil)
 		if err != nil {
-			resp.Diagnostics.AddError("Workflow created, but its steps could not be applied", err.Error())
+			resp.Diagnostics.Append(mutationDiagsFor("Workflow created, but its steps could not be applied", err)...)
 			saveID()
 			return
 		}
@@ -59,7 +59,7 @@ func (r *workflowResource) Create(ctx context.Context, req resource.CreateReques
 
 	if plan.Published.ValueBool() {
 		if err := r.setPublished(ctx, workflowID, true); err != nil {
-			resp.Diagnostics.AddError("Workflow created, but could not be published", err.Error())
+			resp.Diagnostics.Append(mutationDiagsFor("Workflow created, but could not be published", err)...)
 			saveID()
 			return
 		}
@@ -67,7 +67,7 @@ func (r *workflowResource) Create(ctx context.Context, req resource.CreateReques
 
 	if !plan.Order.IsNull() && !plan.Order.IsUnknown() {
 		if err := r.setOrder(ctx, workflowID, plan.Order.ValueInt64()); err != nil {
-			resp.Diagnostics.AddError("Workflow created, but its order could not be set", err.Error())
+			resp.Diagnostics.Append(mutationDiagsFor("Workflow created, but its order could not be set", err)...)
 			saveID()
 			return
 		}
@@ -158,7 +158,7 @@ func (r *workflowResource) Update(ctx context.Context, req resource.UpdateReques
 	if restructuring && wasPublished {
 		tflog.Debug(ctx, "unpublishing workflow to restructure steps", map[string]any{"id": workflowID})
 		if err := r.setPublished(ctx, workflowID, false); err != nil {
-			resp.Diagnostics.AddError("Unable to unpublish workflow before restructuring it", err.Error())
+			resp.Diagnostics.Append(mutationDiagsFor("Unable to unpublish workflow before restructuring it", err)...)
 			return
 		}
 	}
@@ -167,7 +167,7 @@ func (r *workflowResource) Update(ctx context.Context, req resource.UpdateReques
 	if restructuring || stepsContentChanged(planSteps, stateSteps) {
 		synced, err := r.syncSteps(ctx, workflowID, planSteps, plan.StartStep, knownIDs)
 		if err != nil {
-			resp.Diagnostics.AddError("Unable to update workflow steps", err.Error())
+			resp.Diagnostics.Append(mutationDiagsFor("Unable to update workflow steps", err)...)
 			// The workflow may be sitting unpublished. Say so rather than leaving
 			// the practitioner to discover their automation is silently off.
 			if restructuring && wasPublished {
@@ -250,6 +250,22 @@ func (r *workflowResource) Delete(ctx context.Context, req resource.DeleteReques
 		return
 	}
 	if deleted.DeleteWorkflow.Error != nil {
+		// Deleting a workflow that is already gone comes back as HTTP 200 with a
+		// payload error whose code is not_found. That is not a failure: the object
+		// is already in the state the practitioner asked for, so a delete has to
+		// treat it as a success. Otherwise a workflow someone removed in Plain's
+		// UI makes `terraform destroy` fail — and specifically
+		// `terraform destroy -refresh=false`, where Read never gets the chance to
+		// drop it from state first.
+		//
+		// Only this code is benign. Everything else is still a real error.
+		if deleted.DeleteWorkflow.Error.ErrorCode() == "not_found" {
+			tflog.Info(ctx, "workflow was already gone in Plain; treating the delete as a success", map[string]any{
+				"id": state.ID.ValueString(),
+			})
+			return
+		}
+
 		resp.Diagnostics.Append(mutationDiags("Unable to delete workflow", deleted.DeleteWorkflow.Error, workflowAttributes)...)
 	}
 }

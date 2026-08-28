@@ -166,3 +166,49 @@ func testAccCheckWorkflowDestroyed(s *terraform.State) error {
 
 	return nil
 }
+
+// testAccCheckWorkflowOrderIs asserts Plain's own view of the workflow's order,
+// not Terraform's.
+//
+// The state attribute is populated by read, so checking it against the config
+// only proves the provider is self-consistent — it would pass even if the order
+// mutation never went out. Reading Plain back is what proves the value actually
+// round-tripped, which is the whole point of covering setOrder.
+//
+// order is workspace-relative: Plain positions this workflow against every
+// other workflow in the workspace, and a randomized name does not isolate it.
+// So this asserts the literal value that was set, never a position or an
+// ordering relative to anything else.
+func testAccCheckWorkflowOrderIs(name string, want int64) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		id, err := resourceID(s, name)
+		if err != nil {
+			return err
+		}
+
+		got, err := workflowOrder(id)
+		if err != nil {
+			return err
+		}
+		if got != want {
+			return fmt.Errorf("%s has order %d in Plain, want %d", name, got, want)
+		}
+
+		return nil
+	}
+}
+
+// workflowOrder reads a workflow's order straight from Plain. order is selected
+// by the WorkflowFields fragment and is a non-null Int in the schema, so it
+// arrives as a plain int with no null case to disambiguate.
+func workflowOrder(workflowID string) (int64, error) {
+	resp, err := GetWorkflow(context.Background(), testAccClient(), workflowID)
+	if err != nil {
+		return 0, fmt.Errorf("reading workflow %s: %w", workflowID, err)
+	}
+	if resp.Workflow == nil {
+		return 0, fmt.Errorf("workflow %s no longer exists", workflowID)
+	}
+
+	return int64(resp.Workflow.Order), nil
+}

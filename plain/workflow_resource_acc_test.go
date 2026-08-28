@@ -120,6 +120,51 @@ resource "plain_workflow" "test" {
 `, name, published)
 }
 
+// rekeyedConfig renders the same two-step graph as workflowConfig but with the
+// step keys supplied by the caller, so a test can apply one set of keys and
+// then rename them. workflowConfig hard-codes is_urgent/raise.
+func rekeyedConfig(name string, published bool, condKey, actionKey string) string {
+	return providerConfig + fmt.Sprintf(`
+resource "plain_workflow" "test" {
+  name      = %[1]q
+  published = %[2]t
+
+  trigger = jsonencode({
+    type   = "events"
+    events = ["thread.thread_created"]
+  })
+
+  start_step = %[3]q
+
+  steps = {
+    %[3]q = {
+      type = "CONDITION"
+      name = "Is the thread urgent?"
+
+      payload = jsonencode({
+        version    = 1
+        type       = "priority_equals"
+        priorities = [0]
+      })
+
+      on_true = %[4]q
+    }
+
+    %[4]q = {
+      type = "ACTION"
+      name = "Raise priority"
+
+      payload = jsonencode({
+        version  = 1
+        type     = "set_priority"
+        priority = 0
+      })
+    }
+  }
+}
+`, name, published, condKey, actionKey)
+}
+
 // TestAccWorkflow_basic covers the whole ordinary lifecycle: create a draft,
 // read it back cleanly, rename it, and destroy it.
 func TestAccWorkflow_basic(t *testing.T) {
@@ -171,8 +216,73 @@ func TestAccWorkflow_basic(t *testing.T) {
 // TestAccWorkflow_import proves the documented import behaviour rather than
 // working around it: Plain does not store the local step keys, so an imported
 // workflow comes back keyed by Plain's step IDs.
+//
+// Both lifecycle states are covered. A published workflow reads its published
+// flag back from publishedAt rather than from anything the practitioner wrote,
+// so importing one exercises a different path through read than a draft does —
+// and the published case is the one a practitioner is most likely to hit, since
+// it is the live automation they are adopting into Terraform.
 func TestAccWorkflow_import(t *testing.T) {
-	name := acctest.RandomWithPrefix("tf-acc-workflow-import")
+	for _, tt := range []struct {
+		name      string
+		published bool
+	}{
+		{"draft", false},
+		{"published", true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			name := acctest.RandomWithPrefix("tf-acc-workflow-import-" + tt.name)
+			config := workflowConfig(name, tt.published, 0, "raise", "")
+
+			resource.Test(t, resource.TestCase{
+				PreCheck:                 func() { testAccPreCheck(t) },
+				ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+				CheckDestroy:             testAccCheckWorkflowDestroyed,
+				Steps: []resource.TestStep{
+					{
+						Config: config,
+					},
+					{
+						ResourceName:      "plain_workflow.test",
+						ImportState:       true,
+						ImportStateVerify: true,
+						// steps and start_step are rekeyed on import, and trigger cannot be
+						// compared literally at all — see checkImportedTriggerIs. Everything
+						// ignored here is asserted by the checks below instead.
+						ImportStateVerifyIgnore: []string{"steps", "start_step", "trigger"},
+						ImportStateCheck: composeImportStateChecks(
+							checkImportedStepsKeyedByID,
+							// ImportStateVerify already compares published against the
+							// pre-import state, but only this says which value it should
+							// have been — a bool that came back wrong in both places would
+							// otherwise pass.
+							checkImportedAttrIs("published", fmt.Sprintf("%t", tt.published)),
+							checkImportedTriggerIs(`{"type":"events","events":["thread.thread_created"]}`),
+							checkImportedPayloads(
+								`{"version":1,"type":"priority_equals","priorities":[0]}`,
+								`{"version":1,"type":"set_priority","priority":0}`,
+							),
+						),
+					},
+				},
+			})
+		})
+	}
+}
+
+// TestAccWorkflow_importThenRekey covers what import.sh tells practitioners to
+// do next: rename the opaque, ID-shaped step keys an import leaves behind.
+//
+// terraform-plugin-testing cannot express "apply, import the same address, then
+// apply": an ImportState step with ImportStatePersist after an apply of the same
+// resource fails with "Resource already managed by Terraform", and
+// ImportStatePersist is rejected outright alongside plannable import blocks. So
+// the first step stands in for the imported state by applying a config whose
+// step keys are already ID-shaped strings, which is exactly the shape an import
+// produces.
+func TestAccWorkflow_importThenRekey(t *testing.T) {
+	name := acctest.RandomWithPrefix("tf-acc-workflow-rekey")
+	var beforeID, publishedAt string
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -180,27 +290,91 @@ func TestAccWorkflow_import(t *testing.T) {
 		CheckDestroy:             testAccCheckWorkflowDestroyed,
 		Steps: []resource.TestStep{
 			{
-				Config: workflowConfig(name, false, 0, "raise", ""),
+				// Stands in for the imported state: opaque, ID-shaped keys.
+				Config: rekeyedConfig(name, true, "wfs_01aaaaaaaaaaaaaaaaaaaaaaaa", "wfs_01bbbbbbbbbbbbbbbbbbbbbbbb"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "published", "true"),
+					captureID("plain_workflow.test", &beforeID),
+					testAccCaptureWorkflowPublishedAt("plain_workflow.test", &publishedAt),
+				),
 			},
 			{
-				ResourceName:      "plain_workflow.test",
-				ImportState:       true,
-				ImportStateVerify: true,
-				// steps and start_step are rekeyed on import, and trigger cannot be
-				// compared literally at all — see checkImportedTriggerIs. Everything
-				// ignored here is asserted by the checks below instead.
-				ImportStateVerifyIgnore: []string{"steps", "start_step", "trigger"},
-				ImportStateCheck: composeImportStateChecks(
-					checkImportedStepsKeyedByID,
-					checkImportedTriggerIs(`{"type":"events","events":["thread.thread_created"]}`),
-					checkImportedPayloads(
-						`{"version":1,"type":"priority_equals","priorities":[0]}`,
-						`{"version":1,"type":"set_priority","priority":0}`,
-					),
+				// The documented "rename the keys afterwards" apply.
+				Config: rekeyedConfig(name, true, "is_urgent", "raise"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "start_step", "is_urgent"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.%", "2"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.on_true", "raise"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "published", "true"),
+					// Half of what import.sh promises: the workflow itself survives a
+					// rekey, it is not replaced.
+					checkIDUnchanged("plain_workflow.test", &beforeID),
+					// The other half, and the point of this test. graphChanged cannot
+					// tell a key rename from a delete-plus-add — Plain never sees the
+					// keys — so the rename is structural, and the provider drops a
+					// published workflow to a draft and republishes it. That brief
+					// outage is what import.sh now warns about, and publishedAt is the
+					// only evidence of it: the published attribute reads true either
+					// way. If someone ever makes the rekey non-structural, this check
+					// fails and the docs have to be corrected with it.
+					testAccCheckWorkflowPublishedAtMoved("plain_workflow.test", &publishedAt),
 				),
+			},
+			{
+				// The rekey must settle: no perpetual diff from the new keys.
+				Config:   rekeyedConfig(name, true, "is_urgent", "raise"),
+				PlanOnly: true,
 			},
 		},
 	})
+}
+
+// captureID records the workflow's Plain ID so a later step can assert it did
+// not move.
+func captureID(name string, into *string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		id, err := resourceID(s, name)
+		if err != nil {
+			return err
+		}
+
+		*into = id
+		return nil
+	}
+}
+
+// checkIDUnchanged asserts the resource was updated in place rather than
+// replaced, which a changed Plain ID would give away.
+func checkIDUnchanged(name string, want *string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		id, err := resourceID(s, name)
+		if err != nil {
+			return err
+		}
+		if id != *want {
+			return fmt.Errorf("%s was replaced: its ID moved from %s to %s. "+
+				"Renaming step keys must update the existing workflow", name, *want, id)
+		}
+
+		return nil
+	}
+}
+
+// checkImportedAttrIs asserts an imported attribute has an expected literal
+// value. Only for attributes that compare as raw strings — a
+// jsontypes.Normalized attribute needs a semantic check instead.
+func checkImportedAttrIs(attr, want string) resource.ImportStateCheckFunc {
+	return func(states []*terraform.InstanceState) error {
+		if len(states) != 1 {
+			return fmt.Errorf("expected one imported instance, got %d", len(states))
+		}
+
+		if got := states[0].Attributes[attr]; got != want {
+			return fmt.Errorf("imported %s = %q, want %q", attr, got, want)
+		}
+
+		return nil
+	}
 }
 
 func composeImportStateChecks(checks ...resource.ImportStateCheckFunc) resource.ImportStateCheckFunc {

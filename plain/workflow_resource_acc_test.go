@@ -19,6 +19,62 @@ import (
 // The payloads here are the shapes verified against the live API — note that
 // priority_equals takes an array and set_priority takes a scalar.
 func workflowConfig(name string, published bool, priority int, onTrue, onFalse string) string {
+	return workflowConfigWith(workflowOptions{
+		name:      name,
+		published: published,
+		priority:  priority,
+		onTrue:    onTrue,
+		onFalse:   onFalse,
+	})
+}
+
+// workflowOptions is the full parameter set for that same two-step workflow.
+// The cosmetic attributes live here rather than on workflowConfig's signature
+// because five positional arguments is already at the limit of what a reader
+// can keep straight, and a name plus an x and a y for each of two steps would
+// have made it ten.
+//
+// The zero value renders byte-for-byte what workflowConfig has always
+// rendered, and that is load-bearing rather than tidy: terraform-plugin-testing
+// compares step configs as text, so any drift in the rendering — a coordinate
+// written as 0 instead of omitted, say — would turn every PlanOnly step in this
+// file into a spurious diff.
+type workflowOptions struct {
+	name      string
+	published bool
+
+	// priority is what the CONDITION step's priority_equals payload matches on,
+	// so changing it alone is a payload-only edit.
+	priority int
+
+	onTrue  string
+	onFalse string
+
+	// condName overrides the CONDITION step's name. Empty keeps the default.
+	condName string
+
+	// condPos and actionPos place the two steps on Plain's canvas. nil leaves
+	// position_x/position_y out of the HCL altogether, which is not the same as
+	// setting them to 0: omitted, the schema's float64default supplies the value
+	// and the practitioner-supplied path is never exercised.
+	condPos   *canvasPos
+	actionPos *canvasPos
+}
+
+// canvasPos is one step's position on Plain's workflow canvas.
+//
+// Whole numbers only. The schema attributes are Float64 and Terraform carries
+// them into state as the JSON text of the number, so an integral coordinate is
+// the only kind whose TestCheckResourceAttr string can be written without
+// guessing at a float format.
+type canvasPos struct {
+	x, y int
+}
+
+// defaultCondStepName is the CONDITION step's name unless a test overrides it.
+const defaultCondStepName = "Is the thread urgent?"
+
+func workflowConfigWith(opts workflowOptions) string {
 	branch := func(attr, target string) string {
 		if target == "" {
 			return ""
@@ -26,10 +82,22 @@ func workflowConfig(name string, published bool, priority int, onTrue, onFalse s
 		return fmt.Sprintf("      %s = %q\n", attr, target)
 	}
 
+	position := func(p *canvasPos) string {
+		if p == nil {
+			return ""
+		}
+		return fmt.Sprintf("      position_x = %d\n      position_y = %d\n", p.x, p.y)
+	}
+
+	condName := opts.condName
+	if condName == "" {
+		condName = defaultCondStepName
+	}
+
 	return providerConfig + fmt.Sprintf(`
 resource "plain_workflow" "test" {
-  name      = %q
-  published = %t
+  name      = %[1]q
+  published = %[2]t
 
   trigger = jsonencode({
     type   = "events"
@@ -41,15 +109,15 @@ resource "plain_workflow" "test" {
   steps = {
     is_urgent = {
       type = "CONDITION"
-      name = "Is the thread urgent?"
+      name = %[6]q
 
       payload = jsonencode({
         version    = 1
         type       = "priority_equals"
-        priorities = [%d]
+        priorities = [%[3]d]
       })
 
-%[4]s%[5]s    }
+%[4]s%[5]s%[7]s    }
 
     raise = {
       type = "ACTION"
@@ -60,10 +128,12 @@ resource "plain_workflow" "test" {
         type     = "set_priority"
         priority = 0
       })
-    }
+%[8]s    }
   }
 }
-`, name, published, priority, branch("on_true", onTrue), branch("on_false", onFalse))
+`, opts.name, opts.published, opts.priority,
+		branch("on_true", opts.onTrue), branch("on_false", opts.onFalse),
+		condName, position(opts.condPos), position(opts.actionPos))
 }
 
 // workflowThreeStepConfig adds a WAIT step, which is how the tests exercise
@@ -120,11 +190,79 @@ resource "plain_workflow" "test" {
 `, name, published)
 }
 
+// rekeyedConfig renders the same two-step graph as workflowConfig but with the
+// step keys supplied by the caller, so a test can apply one set of keys and
+// then rename them. workflowConfig hard-codes is_urgent/raise.
+func rekeyedConfig(name string, published bool, condKey, actionKey string) string {
+	return providerConfig + fmt.Sprintf(`
+resource "plain_workflow" "test" {
+  name      = %[1]q
+  published = %[2]t
+
+  trigger = jsonencode({
+    type   = "events"
+    events = ["thread.thread_created"]
+  })
+
+  start_step = %[3]q
+
+  steps = {
+    %[3]q = {
+      type = "CONDITION"
+      name = "Is the thread urgent?"
+
+      payload = jsonencode({
+        version    = 1
+        type       = "priority_equals"
+        priorities = [0]
+      })
+
+      on_true = %[4]q
+    }
+
+    %[4]q = {
+      type = "ACTION"
+      name = "Raise priority"
+
+      payload = jsonencode({
+        version  = 1
+        type     = "set_priority"
+        priority = 0
+      })
+    }
+  }
+}
+`, name, published, condKey, actionKey)
+}
+
 // TestAccWorkflow_basic covers the whole ordinary lifecycle: create a draft,
 // read it back cleanly, rename it, and destroy it.
+//
+// It is also the only test that gives the steps canvas coordinates. Everywhere
+// else position_x/position_y are omitted, so the schema's
+// float64default.StaticFloat64(0) supplies them and a coordinate a practitioner
+// actually wrote never travels to Plain and back. Here they are set on create,
+// carried unchanged through the rename, and then moved.
 func TestAccWorkflow_basic(t *testing.T) {
 	name := acctest.RandomWithPrefix("tf-acc-workflow")
 	renamed := name + "-renamed"
+
+	placed := workflowOptions{
+		name:      name,
+		onTrue:    "raise",
+		condPos:   &canvasPos{x: 120, y: 40},
+		actionPos: &canvasPos{x: 360, y: 40},
+	}
+
+	// The rename leaves the coordinates alone, so that step still isolates the
+	// name change.
+	renamedAndPlaced := placed
+	renamedAndPlaced.name = renamed
+
+	// And then only the coordinates move.
+	moved := renamedAndPlaced
+	moved.condPos = &canvasPos{x: 200, y: 90}
+	moved.actionPos = &canvasPos{x: 440, y: 90}
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -132,7 +270,7 @@ func TestAccWorkflow_basic(t *testing.T) {
 		CheckDestroy:             testAccCheckWorkflowDestroyed,
 		Steps: []resource.TestStep{
 			{
-				Config: workflowConfig(name, false, 0, "raise", ""),
+				Config: workflowConfigWith(placed),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("plain_workflow.test", "name", name),
 					resource.TestCheckResourceAttr("plain_workflow.test", "published", "false"),
@@ -145,6 +283,14 @@ func TestAccWorkflow_basic(t *testing.T) {
 					resource.TestCheckNoResourceAttr("plain_workflow.test", "steps.is_urgent.on_false"),
 					resource.TestCheckResourceAttr("plain_workflow.test", "steps.raise.type", "ACTION"),
 					resource.TestCheckResourceAttrSet("plain_workflow.test", "id"),
+					// Non-default coordinates have to survive the write and the
+					// read-back. A provider that dropped them would still pass every
+					// other check in this file, because every other config leaves them
+					// at the default.
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.position_x", "120"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.position_y", "40"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.raise.position_x", "360"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.raise.position_y", "40"),
 					// Steps carry Plain's assigned IDs even though they are keyed locally.
 					resource.TestCheckResourceAttrWith("plain_workflow.test", "steps.raise.id", func(v string) error {
 						if !strings.HasPrefix(v, stepIDPrefix) {
@@ -156,13 +302,28 @@ func TestAccWorkflow_basic(t *testing.T) {
 			},
 			{
 				// A second plan against the same config must be empty. This is what
-				// catches JSON normalization drift in trigger and payload.
-				Config:   workflowConfig(name, false, 0, "raise", ""),
+				// catches JSON normalization drift in trigger and payload — and now
+				// also a coordinate that comes back from Plain in a different shape
+				// than it went up in.
+				Config:   workflowConfigWith(placed),
 				PlanOnly: true,
 			},
 			{
-				Config: workflowConfig(renamed, false, 0, "raise", ""),
+				Config: workflowConfigWith(renamedAndPlaced),
 				Check:  resource.TestCheckResourceAttr("plain_workflow.test", "name", renamed),
+			},
+			{
+				// A coordinate-only edit. stepsContentChanged is what has to notice
+				// it: nothing about the graph moved, so if the provider compared only
+				// payloads the new positions would never be written and this would
+				// fail on the read-back.
+				Config: workflowConfigWith(moved),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.position_x", "200"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.position_y", "90"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.raise.position_x", "440"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.raise.position_y", "90"),
+				),
 			},
 		},
 	})
@@ -171,8 +332,73 @@ func TestAccWorkflow_basic(t *testing.T) {
 // TestAccWorkflow_import proves the documented import behaviour rather than
 // working around it: Plain does not store the local step keys, so an imported
 // workflow comes back keyed by Plain's step IDs.
+//
+// Both lifecycle states are covered. A published workflow reads its published
+// flag back from publishedAt rather than from anything the practitioner wrote,
+// so importing one exercises a different path through read than a draft does —
+// and the published case is the one a practitioner is most likely to hit, since
+// it is the live automation they are adopting into Terraform.
 func TestAccWorkflow_import(t *testing.T) {
-	name := acctest.RandomWithPrefix("tf-acc-workflow-import")
+	for _, tt := range []struct {
+		name      string
+		published bool
+	}{
+		{"draft", false},
+		{"published", true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			name := acctest.RandomWithPrefix("tf-acc-workflow-import-" + tt.name)
+			config := workflowConfig(name, tt.published, 0, "raise", "")
+
+			resource.Test(t, resource.TestCase{
+				PreCheck:                 func() { testAccPreCheck(t) },
+				ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+				CheckDestroy:             testAccCheckWorkflowDestroyed,
+				Steps: []resource.TestStep{
+					{
+						Config: config,
+					},
+					{
+						ResourceName:      "plain_workflow.test",
+						ImportState:       true,
+						ImportStateVerify: true,
+						// steps and start_step are rekeyed on import, and trigger cannot be
+						// compared literally at all — see checkImportedTriggerIs. Everything
+						// ignored here is asserted by the checks below instead.
+						ImportStateVerifyIgnore: []string{"steps", "start_step", "trigger"},
+						ImportStateCheck: composeImportStateChecks(
+							checkImportedStepsKeyedByID,
+							// ImportStateVerify already compares published against the
+							// pre-import state, but only this says which value it should
+							// have been — a bool that came back wrong in both places would
+							// otherwise pass.
+							checkImportedAttrIs("published", fmt.Sprintf("%t", tt.published)),
+							checkImportedTriggerIs(`{"type":"events","events":["thread.thread_created"]}`),
+							checkImportedPayloads(
+								`{"version":1,"type":"priority_equals","priorities":[0]}`,
+								`{"version":1,"type":"set_priority","priority":0}`,
+							),
+						),
+					},
+				},
+			})
+		})
+	}
+}
+
+// TestAccWorkflow_importThenRekey covers what import.sh tells practitioners to
+// do next: rename the opaque, ID-shaped step keys an import leaves behind.
+//
+// terraform-plugin-testing cannot express "apply, import the same address, then
+// apply": an ImportState step with ImportStatePersist after an apply of the same
+// resource fails with "Resource already managed by Terraform", and
+// ImportStatePersist is rejected outright alongside plannable import blocks. So
+// the first step stands in for the imported state by applying a config whose
+// step keys are already ID-shaped strings, which is exactly the shape an import
+// produces.
+func TestAccWorkflow_importThenRekey(t *testing.T) {
+	name := acctest.RandomWithPrefix("tf-acc-workflow-rekey")
+	var beforeID, publishedAt string
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -180,27 +406,91 @@ func TestAccWorkflow_import(t *testing.T) {
 		CheckDestroy:             testAccCheckWorkflowDestroyed,
 		Steps: []resource.TestStep{
 			{
-				Config: workflowConfig(name, false, 0, "raise", ""),
+				// Stands in for the imported state: opaque, ID-shaped keys.
+				Config: rekeyedConfig(name, true, "wfs_01aaaaaaaaaaaaaaaaaaaaaaaa", "wfs_01bbbbbbbbbbbbbbbbbbbbbbbb"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "published", "true"),
+					captureID("plain_workflow.test", &beforeID),
+					testAccCaptureWorkflowPublishedAt("plain_workflow.test", &publishedAt),
+				),
 			},
 			{
-				ResourceName:      "plain_workflow.test",
-				ImportState:       true,
-				ImportStateVerify: true,
-				// steps and start_step are rekeyed on import, and trigger cannot be
-				// compared literally at all — see checkImportedTriggerIs. Everything
-				// ignored here is asserted by the checks below instead.
-				ImportStateVerifyIgnore: []string{"steps", "start_step", "trigger"},
-				ImportStateCheck: composeImportStateChecks(
-					checkImportedStepsKeyedByID,
-					checkImportedTriggerIs(`{"type":"events","events":["thread.thread_created"]}`),
-					checkImportedPayloads(
-						`{"version":1,"type":"priority_equals","priorities":[0]}`,
-						`{"version":1,"type":"set_priority","priority":0}`,
-					),
+				// The documented "rename the keys afterwards" apply.
+				Config: rekeyedConfig(name, true, "is_urgent", "raise"),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "start_step", "is_urgent"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.%", "2"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.on_true", "raise"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "published", "true"),
+					// Half of what import.sh promises: the workflow itself survives a
+					// rekey, it is not replaced.
+					checkIDUnchanged("plain_workflow.test", &beforeID),
+					// The other half, and the point of this test. graphChanged cannot
+					// tell a key rename from a delete-plus-add — Plain never sees the
+					// keys — so the rename is structural, and the provider drops a
+					// published workflow to a draft and republishes it. That brief
+					// outage is what import.sh now warns about, and publishedAt is the
+					// only evidence of it: the published attribute reads true either
+					// way. If someone ever makes the rekey non-structural, this check
+					// fails and the docs have to be corrected with it.
+					testAccCheckWorkflowPublishedAtMoved("plain_workflow.test", &publishedAt),
 				),
+			},
+			{
+				// The rekey must settle: no perpetual diff from the new keys.
+				Config:   rekeyedConfig(name, true, "is_urgent", "raise"),
+				PlanOnly: true,
 			},
 		},
 	})
+}
+
+// captureID records the workflow's Plain ID so a later step can assert it did
+// not move.
+func captureID(name string, into *string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		id, err := resourceID(s, name)
+		if err != nil {
+			return err
+		}
+
+		*into = id
+		return nil
+	}
+}
+
+// checkIDUnchanged asserts the resource was updated in place rather than
+// replaced, which a changed Plain ID would give away.
+func checkIDUnchanged(name string, want *string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		id, err := resourceID(s, name)
+		if err != nil {
+			return err
+		}
+		if id != *want {
+			return fmt.Errorf("%s was replaced: its ID moved from %s to %s. "+
+				"Renaming step keys must update the existing workflow", name, *want, id)
+		}
+
+		return nil
+	}
+}
+
+// checkImportedAttrIs asserts an imported attribute has an expected literal
+// value. Only for attributes that compare as raw strings — a
+// jsontypes.Normalized attribute needs a semantic check instead.
+func checkImportedAttrIs(attr, want string) resource.ImportStateCheckFunc {
+	return func(states []*terraform.InstanceState) error {
+		if len(states) != 1 {
+			return fmt.Errorf("expected one imported instance, got %d", len(states))
+		}
+
+		if got := states[0].Attributes[attr]; got != want {
+			return fmt.Errorf("imported %s = %q, want %q", attr, got, want)
+		}
+
+		return nil
+	}
 }
 
 func composeImportStateChecks(checks ...resource.ImportStateCheckFunc) resource.ImportStateCheckFunc {
@@ -351,7 +641,7 @@ func checkImportedStepsKeyedByID(states []*terraform.InstanceState) error {
 // asserts the line graphChanged draws, in both directions, against the real API.
 func TestAccWorkflow_publishLifecycle(t *testing.T) {
 	name := acctest.RandomWithPrefix("tf-acc-workflow-publish")
-	var publishedAt, afterPayloadEdit string
+	var publishedAt, afterPayloadEdit, afterCosmeticEdit string
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },
@@ -376,15 +666,51 @@ func TestAccWorkflow_publishLifecycle(t *testing.T) {
 				),
 			},
 			{
+				// Cosmetic edit: the CONDITION step's name and both canvas
+				// coordinates change while the graph stays exactly as it was.
+				//
+				// stepsContentChanged watches all three, so the write does go out;
+				// graphChanged ignores all three, so it has to go out without taking
+				// the workflow offline first. The payload-only step above proves that
+				// for one of the four fields stepsContentChanged compares — this
+				// proves it for the other three, which is where a widened
+				// graphChanged would most plausibly land next. Renaming a step or
+				// dragging a box on the canvas must never pause live automation.
+				Config: workflowConfigWith(workflowOptions{
+					name:      name,
+					published: true,
+					priority:  1,
+					onTrue:    "raise",
+					condName:  "Is the thread urgent enough?",
+					condPos:   &canvasPos{x: 220, y: 80},
+					actionPos: &canvasPos{x: 460, y: 80},
+				}),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("plain_workflow.test", "published", "true"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.name", "Is the thread urgent enough?"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.position_x", "220"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.position_y", "80"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.raise.position_x", "460"),
+					resource.TestCheckResourceAttr("plain_workflow.test", "steps.raise.position_y", "80"),
+					testAccCheckWorkflowPublishedAtUnchanged("plain_workflow.test", &afterPayloadEdit),
+					testAccCaptureWorkflowPublishedAt("plain_workflow.test", &afterCosmeticEdit),
+				),
+			},
+			{
 				// Structural edit: the branch moves from on_true to on_false. This
 				// would fail outright without the unpublish/republish sequencing,
 				// so the step passing at all is half the assertion.
+				//
+				// The name and coordinates revert here alongside the rewire, which
+				// does not muddy the assertion: the step above has already shown that
+				// those three on their own leave publishedAt where it is, so the
+				// branch move is the only thing that can have caused a republish.
 				Config: workflowConfig(name, true, 1, "", "raise"),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("plain_workflow.test", "published", "true"),
 					resource.TestCheckResourceAttr("plain_workflow.test", "steps.is_urgent.on_false", "raise"),
 					resource.TestCheckNoResourceAttr("plain_workflow.test", "steps.is_urgent.on_true"),
-					testAccCheckWorkflowPublishedAtMoved("plain_workflow.test", &afterPayloadEdit),
+					testAccCheckWorkflowPublishedAtMoved("plain_workflow.test", &afterCosmeticEdit),
 				),
 			},
 			{

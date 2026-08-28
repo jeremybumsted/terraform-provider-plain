@@ -1,10 +1,17 @@
 package plain
 
 import (
+	"context"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-jsontypes/jsontypes"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	fwresource "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 func step(stepType, next, onTrue, onFalse string) stepModel {
@@ -203,5 +210,135 @@ func TestSortedKeysIsDeterministic(t *testing.T) {
 				t.Fatalf("sortedKeys() = %v, want %v", got, want)
 			}
 		}
+	}
+}
+
+// TestImportStateRejectsNonWorkflowID covers the shape guard on the import
+// address. The rejecting cases return before touching resp.State, so a
+// zero-value ImportStateResponse is enough; the accepting cases need a real
+// tfsdk.State built from the resource schema so SetAttribute has somewhere to
+// write.
+func TestImportStateRejectsNonWorkflowID(t *testing.T) {
+	ctx := context.Background()
+
+	r := NewWorkflowResource()
+	schemaResp := &fwresource.SchemaResponse{}
+	r.Schema(ctx, fwresource.SchemaRequest{}, schemaResp)
+	if schemaResp.Diagnostics.HasError() {
+		t.Fatalf("schema: %v", schemaResp.Diagnostics)
+	}
+
+	tests := []struct {
+		name    string
+		id      string
+		wantErr bool
+		// wantID is the value expected in state when the address is accepted.
+		wantID string
+	}{
+		{name: "empty", id: "", wantErr: true},
+		{name: "not an id", id: "banana", wantErr: true},
+		{name: "step id", id: stepIDPrefix + "01HXXXXXXXXXXXXXXXXXXXXXXX", wantErr: true},
+		{name: "whitespace only", id: "   ", wantErr: true},
+		{name: "padded workflow id", id: "  wf_01HXXXXXXXXXXXXXXXXXXXXXXX  ", wantID: "wf_01HXXXXXXXXXXXXXXXXXXXXXXX"},
+		{name: "workflow id", id: "wf_01HXXXXXXXXXXXXXXXXXXXXXXX", wantID: "wf_01HXXXXXXXXXXXXXXXXXXXXXXX"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := &fwresource.ImportStateResponse{
+				State: tfsdk.State{
+					Schema: schemaResp.Schema,
+					Raw:    tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil),
+				},
+			}
+			r.(fwresource.ResourceWithImportState).ImportState(ctx, fwresource.ImportStateRequest{ID: tc.id}, resp)
+
+			if got := resp.Diagnostics.HasError(); got != tc.wantErr {
+				t.Fatalf("HasError() = %t, want %t (diags: %v)", got, tc.wantErr, resp.Diagnostics)
+			}
+			if tc.wantErr {
+				// The message must name the attribute shape, not echo the API.
+				detail := resp.Diagnostics.Errors()[0].Detail()
+				if !strings.Contains(detail, workflowIDPrefix) {
+					t.Errorf("detail does not mention %q: %s", workflowIDPrefix, detail)
+				}
+				// The untrimmed input is quoted so whitespace stays visible.
+				if !strings.Contains(detail, strconv.Quote(tc.id)) {
+					t.Errorf("detail does not quote the raw ID %q: %s", tc.id, detail)
+				}
+				// A step ID gets the extra "steps are not importable" paragraph.
+				wantStepHint := strings.HasPrefix(strings.TrimSpace(tc.id), stepIDPrefix)
+				if got := strings.Contains(detail, "not separately"); got != wantStepHint {
+					t.Errorf("step-ID hint present = %t, want %t: %s", got, wantStepHint, detail)
+				}
+				return
+			}
+
+			var gotID types.String
+			if diags := resp.State.GetAttribute(ctx, path("id"), &gotID); diags.HasError() {
+				t.Fatalf("reading id back: %v", diags)
+			}
+			if gotID.ValueString() != tc.wantID {
+				t.Errorf("state id = %q, want %q", gotID.ValueString(), tc.wantID)
+			}
+		})
+	}
+}
+
+// TestMatchEmptyStepsShape covers the null-versus-empty distinction Terraform
+// enforces on an Optional attribute. read collapses "no steps" to null, which
+// is right for a config that omits steps and wrong for one that writes
+// `steps = {}` — the latter fails the apply with "Provider produced
+// inconsistent result after apply" unless the shape is restored.
+func TestMatchEmptyStepsShape(t *testing.T) {
+	objType := types.ObjectType{AttrTypes: stepAttrTypes()}
+	emptyMap := types.MapValueMust(objType, map[string]attr.Value{})
+	nullMap := types.MapNull(objType)
+	unknownMap := types.MapUnknown(objType)
+
+	populated := types.MapValueMust(objType, map[string]attr.Value{
+		"only": types.ObjectValueMust(stepAttrTypes(), map[string]attr.Value{
+			"id":         types.StringValue("wfs_01"),
+			"type":       types.StringValue("ACTION"),
+			"name":       types.StringValue("Raise priority"),
+			"payload":    jsontypes.NewNormalizedValue(`{"type":"set_priority"}`),
+			"next":       types.StringNull(),
+			"on_true":    types.StringNull(),
+			"on_false":   types.StringNull(),
+			"position_x": types.Float64Value(0),
+			"position_y": types.Float64Value(0),
+		}),
+	})
+
+	for _, tc := range []struct {
+		name         string
+		prior, fresh types.Map
+		want         types.Map
+	}{
+		// The case this exists for: config wrote an empty map, Plain has no
+		// steps, so read produced null. Must come back as an empty map.
+		{"empty prior, null fresh", emptyMap, nullMap, emptyMap},
+
+		// Config omitted steps entirely. Null is correct and must be left alone.
+		{"null prior, null fresh", nullMap, nullMap, nullMap},
+
+		// Nothing to restore: the workflow has steps.
+		{"empty prior, populated fresh", emptyMap, populated, populated},
+		{"null prior, populated fresh", nullMap, populated, populated},
+		{"populated prior, populated fresh", populated, populated, populated},
+
+		// A workflow whose steps were removed out of band, from a config that
+		// declared them. Null is the honest answer; the plan will show the diff.
+		{"populated prior, null fresh", populated, nullMap, nullMap},
+
+		// An unknown prior carries no shape to preserve.
+		{"unknown prior, null fresh", unknownMap, nullMap, nullMap},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := matchEmptyStepsShape(tc.prior, tc.fresh)
+			if !got.Equal(tc.want) {
+				t.Errorf("matchEmptyStepsShape(%v, %v) = %v, want %v", tc.prior, tc.fresh, got, tc.want)
+			}
+		})
 	}
 }

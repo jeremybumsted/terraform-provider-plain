@@ -5,6 +5,9 @@ import "github.com/oklog/ulid/v2"
 // stepIDPrefix is the type prefix Plain uses for workflow step IDs.
 const stepIDPrefix = "wfs_"
 
+// workflowIDPrefix is the type prefix Plain uses for workflow IDs.
+const workflowIDPrefix = "wf_"
+
 // newStepID mints an ID for a step that does not exist yet.
 //
 // bulkUpsertWorkflowSteps honours client-supplied step IDs: an ID that does not

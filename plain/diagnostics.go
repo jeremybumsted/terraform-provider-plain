@@ -1,6 +1,8 @@
 package plain
 
 import (
+	"errors"
+
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 )
 
@@ -25,6 +27,31 @@ var workflowAttributes = map[string]string{
 	"isPublished": "published",
 	"startStepId": "start_step",
 	"steps":       "steps",
+}
+
+// mutationDiagsFor is mutationDiags for the resource's own API helpers, which
+// hand a Plain MutationError back as a bare error rather than as a typed
+// payload field.
+//
+// Rendering one of those with err.Error() is a real bug, not a style choice.
+// Error() is promoted from MutationErrorFields and formats the *raw* message,
+// and Plain returns step-payload validation failures as a raw ZodError — tens
+// of thousands of characters of union-branch noise. Putting that straight into
+// a diagnostic is precisely what plain/zoderror.go exists to prevent, so any
+// error that is a MutationError has to take the same route as the ones the
+// mutation payloads carry.
+//
+// Anything else is a transport failure and prints as it is.
+func mutationDiagsFor(summary string, err error) diag.Diagnostics {
+	var e mutationError
+	if errors.As(err, &e) {
+		return mutationDiags(summary, e, workflowAttributes)
+	}
+
+	var diags diag.Diagnostics
+	diags.AddError(summary, err.Error())
+
+	return diags
 }
 
 // mutationDiags converts a Plain MutationError into diagnostics.

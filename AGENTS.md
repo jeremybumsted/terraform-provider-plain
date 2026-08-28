@@ -193,6 +193,13 @@ objects in a real Plain workspace. Point `PLAIN_API_KEY` at a scratch workspace,
 never a production one. Every test uses a randomized name and asserts
 `CheckDestroy`, so a failed run does not silently leave objects behind.
 
+**Never run two acceptance suites against one workspace at the same time.**
+`mise run testacc` is serial within a run; two concurrent runs produced HTTP
+500s from `deleteWorkflow` and orphaned real objects. And `CheckDestroy` only
+runs after a *successful* destroy — a destroy that fails leaves the object
+behind and reports nothing, so sweep for `tf-acc*` workflows after any failed
+run.
+
 The one that matters most is `TestAccWorkflow_publishLifecycle`. It is the only
 thing that can catch a regression in the unpublish/republish sequencing, and it
 asserts the behaviour in both directions:
@@ -209,6 +216,34 @@ this test is what should stop you.
 Note also `TestAccWorkflow_import`, which asserts the documented rekeying rather
 than ignoring it: imported steps come back keyed by Plain step ID, and the check
 verifies each key equals its step's own ID.
+
+### Manual end-to-end runs
+
+The acceptance suite drives the provider through terraform-plugin-testing, not
+through the `terraform` binary. Before a release it is worth exercising the real
+CLI against a real build, because that is the only thing that shows what a
+practitioner actually sees — diagnostic wording and wrapping in particular,
+which no `ExpectError` regex tells you.
+
+```sh
+mise run install                          # build into GOBIN
+mise run dev-override                     # write .terraformrc-dev
+export TF_CLI_CONFIG_FILE=$PWD/.terraformrc-dev
+export PLAIN_API_KEY=...                  # scratch workspace
+
+mkdir /tmp/plain-e2e && cd /tmp/plain-e2e # write a main.tf, then:
+terraform apply
+```
+
+**Do not run `terraform init`** — it fails for a provider under `dev_overrides`,
+by design. Skip it.
+
+Worth walking through: `apply`, then `plan -detailed-exitcode` (must exit 0, no
+drift), then `terraform import` into a fresh directory, then `destroy`. The
+post-import plan showing an in-place update is correct, not a bug — that is the
+step rekeying described in `examples/resources/plain_workflow/import.sh`.
+
+Name anything created here `tf-acc*` so the same sweep finds it.
 
 **`ImportStateVerify` cannot check a `jsontypes.Normalized` attribute**, and
 this catches people. It compares state attributes as raw strings. `jsonencode()`

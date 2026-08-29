@@ -25,3 +25,11 @@ steps:
     depends_on: "build"
     plugins:
       - setup-go#v0.1.0: ~
+
+  - label: ":white_check_mark: acceptance tests"
+    command: mise testacc
+    if: build.branch == "main"
+    secrets:
+      - PLAIN_API_KEY
+    plugins:
+      - setup-go#v0.1.0: ~

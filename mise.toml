@@ -7,10 +7,16 @@ terraform = "latest"
 [tasks.dev-override]
 description = "Write .terraformrc-dev so Terraform uses the locally installed provider"
 run = '''
+# `go env GOBIN` prints an empty string and exits 0 when GOBIN is unset, so a
+# `||` fallback never fires — test emptiness explicitly or CI writes an empty
+# dev_overrides path and terraform fails somewhere confusing.
+bindir="$(go env GOBIN)"
+[ -n "$bindir" ] || bindir="$(go env GOPATH)/bin"
+
 cat > "$MISE_PROJECT_ROOT/.terraformrc-dev" <<EOF
 provider_installation {
   dev_overrides {
-    "jeremybumsted/plain" = "$(go env GOBIN || echo "$(go env GOPATH)/bin")"
+    "jeremybumsted/plain" = "$bindir"
   }
   direct {}
 }
@@ -36,13 +42,17 @@ description = "Run acceptance tests (hits the real Plain API — needs PLAIN_API
 env = { TF_ACC = "1" }
 run = "go test ./plain/... -v -count=1 -timeout 30m"
 
+[tasks.e2e]
+description = "End-to-end walkthrough through the real terraform CLI (hits the real Plain API — needs PLAIN_API_KEY)"
+run = "./test/e2e/run.sh"
+
 [tasks.lint]
 description = "Run golangci-lint"
 run = "golangci-lint run ./..."
 
 [tasks.fmt]
 description = "Format Go and Terraform files"
-run = ["go fmt ./...", "terraform fmt -recursive ./examples"]
+run = ["go fmt ./...", "terraform fmt -recursive ./examples", "terraform fmt -recursive ./test"]
 
 [tasks.schema]
 description = "Re-download the Plain GraphQL schema"

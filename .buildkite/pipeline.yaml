@@ -4,32 +4,92 @@ steps:
     key: "qc"
     steps:
       - label: ":golangci-lint: lint"
-        command: mise lint
+        command: mise run lint
         plugins:
           - setup-go#v0.1.0: ~
+
       - label: ":eyeglasses: :golang: format"
-        command: mise fmt
+        command: |
+          mise run fmt
+          git diff --exit-code || {
+            echo "^^^ formatting drift — run 'mise run fmt' and commit the result"
+            exit 1
+          }
         plugins:
           - setup-go#v0.1.0: ~
-  - wait: ~
-    depends_on: "qc"
+
+      - label: ":robot_face: generated client is current"
+        command: |
+          mise run generate
+          git add -A -- plain/generated.go
+          git diff --cached --exit-code -- plain/generated.go || {
+            echo "^^^ plain/generated.go is stale — run 'mise run generate' and commit the result"
+            exit 1
+          }
+        plugins:
+          - setup-go#v0.1.0: ~
+
+      - label: ":book: docs are current"
+        command: |
+          mise run docs
+          git add -A -- docs/
+          git diff --cached --exit-code -- docs/ || {
+            echo "^^^ docs/ is stale — run 'mise run docs' and commit the result"
+            exit 1
+          }
+        plugins:
+          - setup-go#v0.1.0: ~
+
   - label: ":golang: :building_construction: build"
-    command: mise build
+    command: mise run build
     key: "build"
     depends_on: "qc"
     plugins:
       - setup-go#v0.1.0: ~
+
   - label: ":golang: :test_tube: tests"
-    command: mise test
+    command: mise run test
     key: "tests"
     depends_on: "build"
     plugins:
       - setup-go#v0.1.0: ~
 
+  - label: ":lock: acceptance and e2e concurrency gate"
+    command: exit 0
+    depends_on: tests
+    checkout:
+      skip: true
+    concurrency_group: "plain/test-gate"
+    concurrency: 1
+
+  - wait
+
   - label: ":white_check_mark: acceptance tests"
-    command: mise testacc
+    command: mise run testacc
     if: build.branch == "main"
+    key: "testacc"
     secrets:
       - PLAIN_API_KEY
     plugins:
       - setup-go#v0.1.0: ~
+
+  - label: ":terraform: end-to-end tests"
+    command: mise run e2e
+    key: "e2e"
+    depends_on: "testacc"
+    if: build.branch == "main"
+    concurrency: 1
+    concurrency_group: "plain/staging-workspace"
+    secrets:
+      - PLAIN_API_KEY
+    plugins:
+      - setup-go#v0.1.0: ~
+
+  - wait
+
+  - label: ":unlock: acceptance and e2e concurrency gate"
+    command: exit 0
+    checkout:
+      skip: true
+    concurrency_group: "plain/test-gate"
+    concurrency: 1

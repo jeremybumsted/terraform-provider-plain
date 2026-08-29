@@ -1,0 +1,27 @@
+cache: ".buildkite/cache-volume"
+steps:
+  - group: ":nail_care: Quality"
+    key: "qc"
+    steps:
+      - label: ":golangci-lint: lint"
+        command: mise lint
+        plugins:
+          - setup-go#v0.1.0: ~
+      - label: ":eyeglasses: :golang: format"
+        command: mise fmt
+        plugins:
+          - setup-go#v0.1.0: ~
+  - wait: ~
+    depends_on: "qc"
+  - label: ":golang: :building_construction: build"
+    command: mise build
+    key: "build"
+    depends_on: "qc"
+    plugins:
+      - setup-go#v0.1.0: ~
+  - label: ":golang: :test_tube: tests"
+    command: mise test
+    key: "tests"
+    depends_on: "build"
+    plugins:
+      - setup-go#v0.1.0: ~

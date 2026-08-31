@@ -54,9 +54,22 @@ steps:
     plugins:
       - setup-go#v0.1.0: ~
 
+  # Contributions arrive as pull requests, and the acceptance and e2e suites
+  # write to a real Plain workspace with a real API key. On main they run
+  # unattended; on a pull request a maintainer unblocks them by hand.
+  - block: ":hand: run acceptance and e2e tests"
+    key: "unblock-tests"
+    prompt: "Run the acceptance and end-to-end suites against the staging Plain workspace?"
+    depends_on: "tests"
+    if: build.pull_request.id != null
+
   - label: ":lock: acceptance and e2e concurrency gate"
     command: exit 0
-    depends_on: tests
+    depends_on:
+      - "tests"
+      # Without this the gate ignores the block step and takes the lock while a
+      # human is still deciding: a step with depends_on skips implicit ordering.
+      - "unblock-tests"
     checkout:
       skip: true
     concurrency_group: "plain/test-gate"
@@ -66,7 +79,8 @@ steps:
 
   - label: ":white_check_mark: acceptance tests"
     command: mise run testacc
-    if: build.branch == "main"
+    # main, or a pull request. Plain branch builds never touch the workspace.
+    if: build.branch == "main" || build.pull_request.id != null
     key: "testacc"
     secrets:
       - PLAIN_API_KEY
@@ -77,7 +91,7 @@ steps:
     command: mise run e2e
     key: "e2e"
     depends_on: "testacc"
-    if: build.branch == "main"
+    if: build.branch == "main" || build.pull_request.id != null
     concurrency: 1
     concurrency_group: "plain/staging-workspace"
     secrets:

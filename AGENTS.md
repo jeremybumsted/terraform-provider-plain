@@ -78,6 +78,27 @@ check alone will silently succeed on failure. Surface `error.code` in
 diagnostics; codes are documented at
 <https://www.plain.com/docs/graphql/error-codes>.
 
+**core-api serves transient HTTP 500s in multi-minute windows.** The client
+retries them (`plain/retry.go`), but only for the operations in `retryableOps`:
+read queries, plus `deleteWorkflow` because Delete already treats `not_found` as
+success. `createWorkflow`, `updateWorkflow` and `bulkUpsertWorkflowSteps` are
+deliberately excluded — a lost 500 from a write may mean the write landed, so a
+replay would duplicate a workflow or re-run a graph replace. Do not add them.
+
+The retry lives in a `graphql.Client` wrapper rather than in `authTransport`,
+because a `http.RoundTripper` sees only an `http.Request`: scoping there would
+mean parsing the operation name back out of the JSON body and buffering that
+body to make it replayable. At the GraphQL layer the operation name is a struct
+field and genqlient marshals a fresh request per attempt, so replay is free. It
+also means a payload error on an HTTP 200 is structurally unreachable from the
+retry loop — genqlient returns a nil error for those.
+
+Four attempts, full-jitter backoff, and the whole sequence is bounded by
+`clientTimeout` (60s) via a context deadline, so a retrying call takes no longer
+in the worst case than a single non-retrying one did. When the next backoff
+would not fit in the remaining budget the sequence is abandoned and the
+underlying 5xx is returned, not a deadline error.
+
 ## Scope
 
 **Workflows only.** Plain's schema exposes 777 mutations covering threads,

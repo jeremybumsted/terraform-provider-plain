@@ -42,8 +42,11 @@ func (r *workflowResource) Create(ctx context.Context, req resource.CreateReques
 
 	// From here on the workflow exists. Any later failure must still write the ID
 	// to state, or Terraform loses track of it and the next apply orphans it.
+	// Identity goes with it: Terraform persists the partial state, and state that
+	// tracks a real object should carry the identity that names it.
 	saveID := func() {
 		resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path("id"), workflowID)...)
+		resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, workflowID)...)
 	}
 
 	resolved := map[string]string{}
@@ -92,6 +95,7 @@ func (r *workflowResource) Create(ctx context.Context, req resource.CreateReques
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, workflowID)...)
 }
 
 func (r *workflowResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -124,6 +128,12 @@ func (r *workflowResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &fresh)...)
+
+	// State written before the provider declared an identity carries none, and
+	// Read is where it gets filled in on the next refresh. The ID read by is used
+	// rather than the one read back, so this cannot silently write a different
+	// identity than the one already stored — the framework rejects that.
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, state.ID.ValueString())...)
 }
 
 func (r *workflowResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -233,6 +243,7 @@ func (r *workflowResource) Update(ctx context.Context, req resource.UpdateReques
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &fresh)...)
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, workflowID)...)
 }
 
 func (r *workflowResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

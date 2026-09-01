@@ -22,6 +22,7 @@ import (
 var (
 	_ resource.Resource                   = (*workflowResource)(nil)
 	_ resource.ResourceWithConfigure      = (*workflowResource)(nil)
+	_ resource.ResourceWithIdentity       = (*workflowResource)(nil)
 	_ resource.ResourceWithImportState    = (*workflowResource)(nil)
 	_ resource.ResourceWithValidateConfig = (*workflowResource)(nil)
 )
@@ -215,13 +216,27 @@ func (r *workflowResource) Configure(_ context.Context, req resource.ConfigureRe
 }
 
 func (r *workflowResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-	id := strings.TrimSpace(req.ID)
+	// An import arrives one of two ways. `terraform import`, and an import block
+	// with `id`, set req.ID. An import block with `identity` (Terraform 1.12 and
+	// later) leaves req.ID empty and puts the ID in req.Identity instead. Both
+	// name the same thing, so resolve to one value and validate it once.
+	raw := req.ID
+	if raw == "" && req.Identity != nil {
+		var identityID types.String
+		resp.Diagnostics.Append(req.Identity.GetAttribute(ctx, path("id"), &identityID)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		raw = identityID.ValueString()
+	}
+
+	id := strings.TrimSpace(raw)
 
 	if !strings.HasPrefix(id, workflowIDPrefix) {
 		detail := fmt.Sprintf(
 			"Import a workflow by its Plain ID, which begins with %q — for example "+
 				"wf_01HXXXXXXXXXXXXXXXXXXXXXXX. Got %q.",
-			workflowIDPrefix, req.ID)
+			workflowIDPrefix, raw)
 
 		// The most likely wrong paste is a step ID, so name that case.
 		if strings.HasPrefix(id, stepIDPrefix) {
@@ -237,5 +252,12 @@ func (r *workflowResource) ImportState(ctx context.Context, req resource.ImportS
 
 	// Plain IDs are prefixed and globally unique, so the bare ID is enough.
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path("id"), id)...)
+
+	// Identity is set here as well as in Read. The framework does not require it
+	// after an import — the refresh that follows would fill it in — but an import
+	// addressed by ID string would otherwise report a null identity for the whole
+	// plan that Terraform prints to the practitioner.
+	resp.Diagnostics.Append(setIdentity(ctx, resp.Identity, id)...)
+
 	tflog.Info(ctx, "importing workflow; step keys will be set to Plain step IDs", map[string]any{"id": id})
 }

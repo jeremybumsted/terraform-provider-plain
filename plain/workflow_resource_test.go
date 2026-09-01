@@ -213,6 +213,23 @@ func TestSortedKeysIsDeterministic(t *testing.T) {
 	}
 }
 
+// emptyWorkflowState builds a null state from the resource schema, so
+// SetAttribute has somewhere to write.
+func emptyWorkflowState(t *testing.T, ctx context.Context, r fwresource.Resource) tfsdk.State {
+	t.Helper()
+
+	resp := &fwresource.SchemaResponse{}
+	r.Schema(ctx, fwresource.SchemaRequest{}, resp)
+	if resp.Diagnostics.HasError() {
+		t.Fatalf("schema: %v", resp.Diagnostics)
+	}
+
+	return tfsdk.State{
+		Schema: resp.Schema,
+		Raw:    tftypes.NewValue(resp.Schema.Type().TerraformType(ctx), nil),
+	}
+}
+
 // TestImportStateRejectsNonWorkflowID covers the shape guard on the import
 // address. The rejecting cases return before touching resp.State, so a
 // zero-value ImportStateResponse is enough; the accepting cases need a real
@@ -222,11 +239,6 @@ func TestImportStateRejectsNonWorkflowID(t *testing.T) {
 	ctx := context.Background()
 
 	r := NewWorkflowResource()
-	schemaResp := &fwresource.SchemaResponse{}
-	r.Schema(ctx, fwresource.SchemaRequest{}, schemaResp)
-	if schemaResp.Diagnostics.HasError() {
-		t.Fatalf("schema: %v", schemaResp.Diagnostics)
-	}
 
 	tests := []struct {
 		name    string
@@ -245,12 +257,10 @@ func TestImportStateRejectsNonWorkflowID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			resp := &fwresource.ImportStateResponse{
-				State: tfsdk.State{
-					Schema: schemaResp.Schema,
-					Raw:    tftypes.NewValue(schemaResp.Schema.Type().TerraformType(ctx), nil),
-				},
-			}
+			// resp.Identity is deliberately left nil here: the framework always
+			// populates it, but setIdentity tolerates a nil and this is the only
+			// test that exercises that path.
+			resp := &fwresource.ImportStateResponse{State: emptyWorkflowState(t, ctx, r)}
 			r.(fwresource.ResourceWithImportState).ImportState(ctx, fwresource.ImportStateRequest{ID: tc.id}, resp)
 
 			if got := resp.Diagnostics.HasError(); got != tc.wantErr {

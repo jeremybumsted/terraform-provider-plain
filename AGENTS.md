@@ -193,6 +193,23 @@ Things the implementation gets right, and must keep getting right:
   `plain/generated.go`.
 - Every resource implements `ImportState`. Plain IDs are opaque and prefixed
   (`wf_`, `lt_`, `tier_`), so a bare ID is a sufficient import address.
+- **Every resource also declares a resource identity, and that identity is the
+  Plain ID alone** (`plain/workflow_resource_identity.go`). Plain mints the ID at
+  create and never changes it, and prefixed IDs are globally unique — which is
+  exactly what Terraform asks of an identity, and the same reason a bare ID is a
+  sufficient import address.
+
+  Declaring one is not free: from then on the framework rejects any Create, Read
+  or Update that returns without identity data ("Missing Resource Identity After
+  Create" and friends), so every one of them calls `setIdentity`, including the
+  partial-failure paths in Create that write only the ID. Read is the one that
+  matters for existing practitioners — state written before identity support
+  carries none, and Read is where it gets filled in on the next refresh.
+
+  `ImportState` handles both addressing modes. `terraform import` and an import
+  block with `id` set `req.ID`; an import block with `identity` (Terraform 1.12+)
+  leaves `req.ID` empty and puts the ID in `req.Identity`. Resolve to one value,
+  validate it once, and write both state and identity.
 - Optional+Computed for anything the API defaults, so drift is not reported on
   values the practitioner never set.
 - Diagnostics name the attribute and say what to do about it. Prefer

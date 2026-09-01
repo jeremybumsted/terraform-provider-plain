@@ -7,6 +7,10 @@ import (
 	"github.com/Khan/genqlient/graphql"
 )
 
+// clientTimeout bounds a single call to Plain, retries included: it is both the
+// per-attempt HTTP timeout and the whole retry budget (see retry.go).
+const clientTimeout = 60 * time.Second
+
 // Client is a configured GraphQL client for the Plain API.
 type Client struct {
 	graphql.Client
@@ -27,10 +31,11 @@ func (t *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return t.next.RoundTrip(req)
 }
 
-// NewClient builds a Plain API client that authenticates every request.
+// NewClient builds a Plain API client that authenticates every request and
+// retries transient failures on the operations where a replay is safe.
 func NewClient(endpoint, apiKey, version string) *Client {
 	httpClient := &http.Client{
-		Timeout: 60 * time.Second,
+		Timeout: clientTimeout,
 		Transport: &authTransport{
 			apiKey:    apiKey,
 			userAgent: "terraform-provider-plain/" + version,
@@ -39,7 +44,10 @@ func NewClient(endpoint, apiKey, version string) *Client {
 	}
 
 	return &Client{
-		Client:   graphql.NewClient(endpoint, httpClient),
+		Client: &retryClient{
+			next:   graphql.NewClient(endpoint, httpClient),
+			policy: defaultRetryPolicy,
+		},
 		Endpoint: endpoint,
 	}
 }
